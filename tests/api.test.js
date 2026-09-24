@@ -116,7 +116,7 @@ test('API needs login', async (t) => {
 
 test('owner can add, update price/listing and delete a car', async (t) => {
   const { owner, renter, carId } = await ownerWithCar(t);
-  let r = await owner('PUT', `/api/cars/${carId}`, { price_per_hour: 12.5, is_listed: false });
+  const r = await owner('PUT', `/api/cars/${carId}`, { price_per_hour: 12.5, is_listed: false });
   assert.equal(r.body.car.price_per_hour, 12.5);
   assert.equal(r.body.car.is_listed, false);
   // Unlisted cars disappear from others' browse list.
