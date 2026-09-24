@@ -14,11 +14,16 @@ npm install
 npm run seed -- --reset   # optional demo data (log in as alice / password123)
 npm start                 # http://localhost:3080
 npm test                  # 22 automated tests
+npm run lint              # ESLint
+npm run format:check      # Prettier (npm run format to fix)
 ```
 
-Requires Node.js ≥ 22.13 (uses the built-in `node:sqlite`). The only dependency is Express. The app needs this server, so it can't run on GitHub Pages; the Pages site is the project's documentation.
+CI runs lint, format:check and the tests on every push to `main` and every pull request.
+
+Requires Node.js ≥ 22.13 (uses the built-in `node:sqlite`). The only runtime dependency is Express. The app needs this server, so it can't run on GitHub Pages; the Pages site is the project's documentation.
 
 ## Documents
+
 - [Requirements](docs/REQUIREMENTS.md): scope, user stories, pricing rule
 - [Design](docs/DESIGN.md): architecture, database schema, REST API, security, configuration
 - [User & setup guide](docs/USER_GUIDE.md): installing, sharing with neighbours, using the app
@@ -26,6 +31,7 @@ Requires Node.js ≥ 22.13 (uses the built-in `node:sqlite`). The only dependenc
 - [Photo credits](docs/IMAGE_CREDITS.md): licences for the demo car photos
 
 ## Layout
+
 ```
 server.js         entry point
 src/              Express app, auth, database, pricing

@@ -77,7 +77,10 @@ function openDb(file) {
 
 // Adds columns introduced after the first release to existing databases.
 function migrate(db) {
-  const cols = db.prepare('PRAGMA table_info(cars)').all().map((c) => c.name);
+  const cols = db
+    .prepare('PRAGMA table_info(cars)')
+    .all()
+    .map((c) => c.name);
   if (!cols.includes('image_credit')) db.exec('ALTER TABLE cars ADD COLUMN image_credit TEXT');
 }
 

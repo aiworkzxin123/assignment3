@@ -37,7 +37,12 @@ async function setup(options = {}) {
 
   async function user(name) {
     const c = client();
-    const r = await c('POST', '/api/auth/register', { username: name, password: 'password123', displayName: name, inviteCode: options.inviteCode });
+    const r = await c('POST', '/api/auth/register', {
+      username: name,
+      password: 'password123',
+      displayName: name,
+      inviteCode: options.inviteCode,
+    });
     assert.equal(r.status, 201, JSON.stringify(r.body));
     return c;
   }
@@ -50,8 +55,17 @@ async function setup(options = {}) {
 }
 
 const carBody = {
-  make: 'Toyota', model: 'Corolla', year: 2020, seats: 5, fuel: 'Hybrid', transmission: 'Automatic',
-  price_per_hour: 10, price_per_day: 50, lat: 51.5, lng: -0.12, address: 'Elm Road',
+  make: 'Toyota',
+  model: 'Corolla',
+  year: 2020,
+  seats: 5,
+  fuel: 'Hybrid',
+  transmission: 'Automatic',
+  price_per_hour: 10,
+  price_per_day: 50,
+  lat: 51.5,
+  lng: -0.12,
+  address: 'Elm Road',
 };
 
 async function ownerWithCar(t) {
@@ -101,7 +115,11 @@ test('enforces the member limit', async (t) => {
 test('requires the invite code when configured', async (t) => {
   const env = await setup({ inviteCode: 'ELM-ROAD' });
   t.after(env.close);
-  const r = await env.client()('POST', '/api/auth/register', { username: 'xuser1', password: 'password123', inviteCode: 'nope' });
+  const r = await env.client()('POST', '/api/auth/register', {
+    username: 'xuser1',
+    password: 'password123',
+    inviteCode: 'nope',
+  });
   assert.equal(r.status, 403);
   await env.user('xuser2'); // helper sends the correct code
 });
@@ -116,7 +134,7 @@ test('API needs login', async (t) => {
 
 test('owner can add, update price/listing and delete a car', async (t) => {
   const { owner, renter, carId } = await ownerWithCar(t);
-  let r = await owner('PUT', `/api/cars/${carId}`, { price_per_hour: 12.5, is_listed: false });
+  const r = await owner('PUT', `/api/cars/${carId}`, { price_per_hour: 12.5, is_listed: false });
   assert.equal(r.body.car.price_per_hour, 12.5);
   assert.equal(r.body.car.is_listed, false);
   // Unlisted cars disappear from others' browse list.
@@ -144,7 +162,10 @@ test('browse filters by seats, price, text and free time', async (t) => {
   assert.equal((await renter('GET', '/api/cars?q=transit')).body.cars[0].make, 'Ford');
   // Only the Toyota has availability set.
   const free = await renter('GET', `/api/cars?from=${iso(2)}&to=${iso(4)}`);
-  assert.deepEqual(free.body.cars.map((c) => c.id), [carId]);
+  assert.deepEqual(
+    free.body.cars.map((c) => c.id),
+    [carId],
+  );
   assert.equal(free.body.cars[0].quote.total, 20);
 });
 
@@ -155,7 +176,11 @@ test('owner uploads a photo and attaches it to a car', async (t) => {
   const { owner, renter, carId } = env;
   const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64)]);
   const cookie = await sessionCookie(env.base);
-  const up = await fetch(`${env.base}/api/uploads`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg', Cookie: cookie }, body: jpeg });
+  const up = await fetch(`${env.base}/api/uploads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/jpeg', Cookie: cookie },
+    body: jpeg,
+  });
   assert.equal(up.status, 201);
   const { url } = await up.json();
   assert.match(url, /^\/uploads\/[a-f0-9]+\.jpg$/);
@@ -173,16 +198,30 @@ test('rejects uploads that are not photos, and anonymous uploads', async (t) => 
   t.after(env.close);
   await env.user('photog');
   const cookie = await sessionCookie(env.base, 'photog2');
-  const fake = await fetch(`${env.base}/api/uploads`, { method: 'POST', headers: { 'Content-Type': 'image/png', Cookie: cookie }, body: 'not really a png file' });
+  const fake = await fetch(`${env.base}/api/uploads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png', Cookie: cookie },
+    body: 'not really a png file',
+  });
   assert.equal(fake.status, 400);
-  const anon = await fetch(`${env.base}/api/uploads`, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: Buffer.alloc(20) });
+  const anon = await fetch(`${env.base}/api/uploads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    body: Buffer.alloc(20),
+  });
   assert.equal(anon.status, 401);
 });
 
 test('photo must be an uploaded file, a bundled photo or a web link', async (t) => {
   const { owner } = await ownerWithCar(t);
-  assert.equal((await owner('POST', '/api/cars', { ...carBody, image_url: '/images/cars/honda-jazz.jpg' })).status, 201);
-  assert.equal((await owner('POST', '/api/cars', { ...carBody, image_url: 'https://example.com/car.jpg' })).status, 201);
+  assert.equal(
+    (await owner('POST', '/api/cars', { ...carBody, image_url: '/images/cars/honda-jazz.jpg' })).status,
+    201,
+  );
+  assert.equal(
+    (await owner('POST', '/api/cars', { ...carBody, image_url: 'https://example.com/car.jpg' })).status,
+    201,
+  );
   assert.equal((await owner('POST', '/api/cars', { ...carBody, image_url: '/etc/passwd' })).status, 400);
   assert.equal((await owner('POST', '/api/cars', { ...carBody, image_url: '/uploads/../server.js' })).status, 400);
 });
