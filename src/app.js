@@ -112,13 +112,23 @@ function createApp(db, options = {}) {
   const q = {
     userByName: db.prepare('SELECT * FROM users WHERE username = ?'),
     userCount: db.prepare('SELECT COUNT(*) AS n FROM users'),
-    insertUser: db.prepare('INSERT INTO users (username, display_name, password_hash, password_salt) VALUES (?, ?, ?, ?)'),
+    insertUser: db.prepare(
+      'INSERT INTO users (username, display_name, password_hash, password_salt) VALUES (?, ?, ?, ?)',
+    ),
     deleteSession: db.prepare('DELETE FROM sessions WHERE token = ?'),
     purgeSessions: db.prepare('DELETE FROM sessions WHERE expires_at <= ?'),
-    car: db.prepare(`SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.id = ?`),
-    listedCars: db.prepare(`SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.is_listed = 1 ORDER BY c.make, c.model`),
-    myCars: db.prepare(`SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.owner_id = ? ORDER BY c.created_at DESC`),
-    windows: db.prepare('SELECT id, start_at, end_at FROM availability WHERE car_id = ? AND end_at > ? ORDER BY start_at'),
+    car: db.prepare(
+      `SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.id = ?`,
+    ),
+    listedCars: db.prepare(
+      `SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.is_listed = 1 ORDER BY c.make, c.model`,
+    ),
+    myCars: db.prepare(
+      `SELECT c.*, u.display_name AS owner_name FROM cars c JOIN users u ON u.id = c.owner_id WHERE c.owner_id = ? ORDER BY c.created_at DESC`,
+    ),
+    windows: db.prepare(
+      'SELECT id, start_at, end_at FROM availability WHERE car_id = ? AND end_at > ? ORDER BY start_at',
+    ),
     window: db.prepare('SELECT * FROM availability WHERE id = ? AND car_id = ?'),
     allWindows: db.prepare('SELECT * FROM availability WHERE car_id = ?'),
     insertWindow: db.prepare('INSERT INTO availability (car_id, start_at, end_at) VALUES (?, ?, ?)'),
@@ -127,11 +137,17 @@ function createApp(db, options = {}) {
       SELECT b.id, b.start_at, b.end_at, b.renter_id, u.display_name AS renter_name
       FROM bookings b JOIN users u ON u.id = b.renter_id
       WHERE b.car_id = ? AND b.status = 'confirmed' AND b.end_at > ? ORDER BY b.start_at`),
-    upcomingInWindow: db.prepare(`SELECT id FROM bookings WHERE car_id = ? AND status = 'confirmed' AND start_at < ? AND end_at > ? AND end_at > ? LIMIT 1`),
-    insertBooking: db.prepare('INSERT INTO bookings (car_id, renter_id, start_at, end_at, total_price, note) VALUES (?, ?, ?, ?, ?, ?)'),
+    upcomingInWindow: db.prepare(
+      `SELECT id FROM bookings WHERE car_id = ? AND status = 'confirmed' AND start_at < ? AND end_at > ? AND end_at > ? LIMIT 1`,
+    ),
+    insertBooking: db.prepare(
+      'INSERT INTO bookings (car_id, renter_id, start_at, end_at, total_price, note) VALUES (?, ?, ?, ?, ?, ?)',
+    ),
     booking: db.prepare('SELECT b.*, c.owner_id FROM bookings b JOIN cars c ON c.id = b.car_id WHERE b.id = ?'),
     cancelBooking: db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`),
-    futureBookingsForCar: db.prepare(`SELECT COUNT(*) AS n FROM bookings WHERE car_id = ? AND status = 'confirmed' AND end_at > ?`),
+    futureBookingsForCar: db.prepare(
+      `SELECT COUNT(*) AS n FROM bookings WHERE car_id = ? AND status = 'confirmed' AND end_at > ?`,
+    ),
     deleteCar: db.prepare('DELETE FROM cars WHERE id = ?'),
     renterBookings: db.prepare(`
       SELECT b.*, c.make, c.model, c.image_url, c.address, c.lat, c.lng, u.display_name AS other_name
@@ -256,7 +272,9 @@ function createApp(db, options = {}) {
 
     const cars = q.listedCars
       .all()
-      .filter((c) => !search || `${c.make} ${c.model} ${c.color || ''} ${c.address || ''}`.toLowerCase().includes(search))
+      .filter(
+        (c) => !search || `${c.make} ${c.model} ${c.color || ''} ${c.address || ''}`.toLowerCase().includes(search),
+      )
       .filter((c) => c.seats >= minSeats)
       .filter((c) => maxPrice === null || c.price_per_hour <= maxPrice)
       .filter((c) => !fuel || c.fuel === fuel)
@@ -298,7 +316,11 @@ function createApp(db, options = {}) {
   app.post('/api/cars', (req, res) => {
     const c = parseCar(req.body, { partial: false });
     const info = db
-      .prepare(`INSERT INTO cars (owner_id, ${Object.keys(c).join(', ')}) VALUES (?, ${Object.keys(c).map(() => '?').join(', ')})`)
+      .prepare(
+        `INSERT INTO cars (owner_id, ${Object.keys(c).join(', ')}) VALUES (?, ${Object.keys(c)
+          .map(() => '?')
+          .join(', ')})`,
+      )
       .run(req.user.id, ...Object.values(c));
     res.status(201).json({ car: carSummary(q.car.get(Number(info.lastInsertRowid)), req.user) });
   });
@@ -310,7 +332,10 @@ function createApp(db, options = {}) {
     if ('image_url' in c && c.image_url !== car.image_url) c.image_credit = null;
     const keys = Object.keys(c);
     if (keys.length) {
-      db.prepare(`UPDATE cars SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...Object.values(c), car.id);
+      db.prepare(`UPDATE cars SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(
+        ...Object.values(c),
+        car.id,
+      );
     }
     res.json({ car: carSummary(q.car.get(car.id), req.user) });
   });
@@ -397,7 +422,10 @@ function createApp(db, options = {}) {
   const IMAGE_SIGNATURES = [
     { ext: 'jpg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
     { ext: 'png', test: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
-    { ext: 'webp', test: (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP' },
+    {
+      ext: 'webp',
+      test: (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
+    },
   ];
 
   app.post(
@@ -421,11 +449,11 @@ function createApp(db, options = {}) {
   app.use('/uploads', express.static(uploadsDir, { fallthrough: false, index: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
     if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON body.' });
-    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'That photo is too big. The limit is 5 MB.' });
+    if (err.type === 'entity.too.large')
+      return res.status(413).json({ error: 'That photo is too big. The limit is 5 MB.' });
     if (err.status === 404) return res.status(404).json({ error: 'Not found.' });
     console.error(err);
     res.status(500).json({ error: 'Something went wrong on the server.' });

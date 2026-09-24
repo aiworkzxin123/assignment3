@@ -31,7 +31,9 @@ test('works with epoch milliseconds as well as ISO strings', () => {
 });
 
 test('mergeWindow() absorbs overlapping and touching windows only', () => {
-  const a = i(0, 2), b = i(5, 7), c = i(20, 22);
+  const a = i(0, 2),
+    b = i(5, 7),
+    c = i(20, 22);
   const { merged, absorbed, rest } = mergeWindow([a, b, c], iso(2), iso(6));
   assert.deepEqual(merged, i(0, 7));
   assert.deepEqual(absorbed, [a, b]);

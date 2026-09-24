@@ -33,7 +33,9 @@ function main(args) {
   const next = build(current);
   if (args.includes('--check')) {
     if (next !== current) {
-      console.error('hosted/index.html is out of date with src/rules.js. Run `npm run build:hosted` and commit the result.');
+      console.error(
+        'hosted/index.html is out of date with src/rules.js. Run `npm run build:hosted` and commit the result.',
+      );
       process.exitCode = 1;
     } else {
       console.log('hosted/index.html is up to date with src/rules.js.');
@@ -42,7 +44,9 @@ function main(args) {
   }
   const crlf = fs.readFileSync(HOSTED, 'utf8').includes('\r\n');
   fs.writeFileSync(HOSTED, crlf ? next.replace(/\n/g, '\r\n') : next);
-  console.log(next === current ? 'hosted/index.html already up to date.' : 'Updated hosted/index.html from src/rules.js.');
+  console.log(
+    next === current ? 'hosted/index.html already up to date.' : 'Updated hosted/index.html from src/rules.js.',
+  );
 }
 
 if (require.main === module) main(process.argv.slice(2));

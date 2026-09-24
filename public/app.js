@@ -35,17 +35,27 @@ async function api(method, url, body) {
 }
 
 function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  return String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 
 const money = (n) => `${state.config.currency}${Number(n).toFixed(Number(n) % 1 ? 2 : 0)}`;
 
 function fmt(iso) {
-  return new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function fmtRange(a, b) {
-  const s = new Date(a), e = new Date(b);
+  const s = new Date(a),
+    e = new Date(b);
   const sameDay = s.toDateString() === e.toDateString();
   const endStr = sameDay ? e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : fmt(b);
   return `${fmt(a)} → ${endStr}`;
@@ -99,13 +109,23 @@ function carImg(car) {
 }
 
 // A photo link that no longer works falls back to the drawn car.
-window.carImgFailed = (img) => { img.outerHTML = CAR_PLACEHOLDER; };
+window.carImgFailed = (img) => {
+  img.outerHTML = CAR_PLACEHOLDER;
+};
 
 // Initials on a colour picked from the name, so each neighbour is recognisable.
 const AVATAR_COLOURS = ['#2f7cf6', '#0f9d74', '#d9480f', '#7c4dff', '#c2185b', '#00838f', '#6d4c41', '#5c6bc0'];
 function avatar(name) {
   const n = String(name || '?');
-  const initials = n.replace(/\(.*?\)/g, '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  const initials =
+    n
+      .replace(/\(.*?\)/g, '')
+      .trim()
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?';
   let h = 0;
   for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return `<span class="avatar" style="background:${AVATAR_COLOURS[h % AVATAR_COLOURS.length]}" aria-hidden="true">${esc(initials)}</span>`;
@@ -139,7 +159,10 @@ async function showApp() {
   $('#auth-view').hidden = true;
   $('#app-view').hidden = false;
   $('#user-name').textContent = state.me.display_name;
-  $('#user-avatar').outerHTML = avatar(state.me.display_name).replace('class="avatar"', 'class="avatar" id="user-avatar"');
+  $('#user-avatar').outerHTML = avatar(state.me.display_name).replace(
+    'class="avatar"',
+    'class="avatar" id="user-avatar"',
+  );
   showView('browse');
 }
 
@@ -228,7 +251,8 @@ async function loadBrowse() {
       renderHero();
     }
     $('#result-title').textContent = timed ? 'Free for your trip' : 'Cars on your street';
-    $('#result-count').textContent = `${cars.length} car${cars.length === 1 ? '' : 's'}${timed ? ' available for the whole time, with the trip price shown' : ', sorted with the ones free right now first'}`;
+    $('#result-count').textContent =
+      `${cars.length} car${cars.length === 1 ? '' : 's'}${timed ? ' available for the whole time, with the trip price shown' : ', sorted with the ones free right now first'}`;
     renderBrowse();
   } catch (err) {
     $('#result-count').textContent = err.message;
@@ -247,8 +271,9 @@ function renderHero() {
     <div class="stat"><b>${owners}</b><span>neighbours sharing</span></div>`;
 
   // Feature the cheapest car that's free now, falling back to any car with a photo.
-  const pick = [...free].filter((c) => c.image_url).sort((a, b) => a.price_per_hour - b.price_per_hour)[0]
-    || all.find((c) => c.image_url);
+  const pick =
+    [...free].filter((c) => c.image_url).sort((a, b) => a.price_per_hour - b.price_per_hour)[0] ||
+    all.find((c) => c.image_url);
   const box = $('#hero-feature');
   if (!pick) {
     box.hidden = true;
@@ -365,19 +390,25 @@ function timelineHtml(windows, bookings, days = 7) {
   start.setHours(0, 0, 0, 0);
   const rows = [];
   for (let i = 0; i < days; i++) {
-    const d0 = new Date(start); d0.setDate(d0.getDate() + i);
-    const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+    const d0 = new Date(start);
+    d0.setDate(d0.getDate() + i);
+    const d1 = new Date(d0);
+    d1.setDate(d1.getDate() + 1);
     const segs = (list, cls) =>
       list
         .map((x) => {
-          const a = Math.max(new Date(x.start_at), d0), b = Math.min(new Date(x.end_at), d1);
+          const a = Math.max(new Date(x.start_at), d0),
+            b = Math.min(new Date(x.end_at), d1);
           if (b <= a) return '';
-          const left = ((a - d0) / 864e5) * 100, width = ((b - a) / 864e5) * 100;
+          const left = ((a - d0) / 864e5) * 100,
+            width = ((b - a) / 864e5) * 100;
           return `<div class="tl-seg ${cls}" style="left:${left}%;width:${width}%" title="${esc(fmtRange(x.start_at, x.end_at))}"></div>`;
         })
         .join('');
     const label = i === 0 ? 'Today' : d0.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
-    rows.push(`<div class="tl-row ${i === 0 ? 'today' : ''}"><span>${label}</span><div class="tl-bar">${segs(windows, 'avail')}${segs(bookings, 'booked')}</div></div>`);
+    rows.push(
+      `<div class="tl-row ${i === 0 ? 'today' : ''}"><span>${label}</span><div class="tl-bar">${segs(windows, 'avail')}${segs(bookings, 'booked')}</div></div>`,
+    );
   }
   return `
     <div class="timeline">
@@ -474,11 +505,17 @@ async function openCar(id) {
 
   const mini = makeMap('mini-map');
   L.marker([car.lat, car.lng], { icon: pricePin(car) }).addTo(mini);
-  setTimeout(() => { mini.invalidateSize(); mini.setView([car.lat, car.lng], 16); }, 0);
+  setTimeout(() => {
+    mini.invalidateSize();
+    mini.setView([car.lat, car.lng], 16);
+  }, 0);
   dlg.addEventListener('close', () => mini.remove(), { once: true });
 
   if (car.is_mine) {
-    $('#manage-car').addEventListener('click', () => { dlg.close(); openCarForm(car); });
+    $('#manage-car').addEventListener('click', () => {
+      dlg.close();
+      openCarForm(car);
+    });
     return;
   }
 
@@ -488,8 +525,16 @@ async function openCar(id) {
     $('#book-error').textContent = '';
     if (!f.start || !f.end) return;
     try {
-      const { quote, unavailable } = await api('GET', `/api/cars/${car.id}/quote?start=${encodeURIComponent(fromLocalInput(f.start))}&end=${encodeURIComponent(fromLocalInput(f.end))}`);
-      const dur = [quote.days && `${quote.days} day${quote.days > 1 ? 's' : ''}`, quote.remHours && `${quote.remHours} hr`].filter(Boolean).join(' ');
+      const { quote, unavailable } = await api(
+        'GET',
+        `/api/cars/${car.id}/quote?start=${encodeURIComponent(fromLocalInput(f.start))}&end=${encodeURIComponent(fromLocalInput(f.end))}`,
+      );
+      const dur = [
+        quote.days && `${quote.days} day${quote.days > 1 ? 's' : ''}`,
+        quote.remHours && `${quote.remHours} hr`,
+      ]
+        .filter(Boolean)
+        .join(' ');
       $('#quote-text').textContent = money(quote.total);
       $('#quote-dur').textContent = `Total · ${dur}`;
       $('#book-btn').disabled = !!unavailable;
@@ -508,7 +553,12 @@ async function openCar(id) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(form));
     try {
-      await api('POST', '/api/bookings', { carId: car.id, start: fromLocalInput(f.start), end: fromLocalInput(f.end), note: f.note });
+      await api('POST', '/api/bookings', {
+        carId: car.id,
+        start: fromLocalInput(f.start),
+        end: fromLocalInput(f.end),
+        note: f.note,
+      });
       toast(`Booked. Arrange the keys and payment with ${car.owner_name}.`);
       dlg.close();
       loadBrowse();
@@ -530,7 +580,8 @@ async function loadMyCars() {
   try {
     const [{ cars }, { asOwner }] = await Promise.all([api('GET', '/api/my/cars'), api('GET', '/api/bookings')]);
     if (!cars.length) {
-      box.innerHTML = '<div class="empty"><strong>Your garage is empty</strong>List your car to start renting it to neighbours when you’re not using it.</div>';
+      box.innerHTML =
+        '<div class="empty"><strong>Your garage is empty</strong>List your car to start renting it to neighbours when you’re not using it.</div>';
       return;
     }
     const details = await Promise.all(cars.map((c) => api('GET', `/api/cars/${c.id}`)));
@@ -542,8 +593,12 @@ async function loadMyCars() {
 }
 
 function myCarHtml({ car, availability, bookings }, ownerBookings) {
-  const upcoming = ownerBookings.filter((b) => b.car_id === car.id && b.status === 'confirmed' && new Date(b.end_at) > new Date());
-  const earned = ownerBookings.filter((b) => b.car_id === car.id && b.status === 'confirmed').reduce((s, b) => s + b.total_price, 0);
+  const upcoming = ownerBookings.filter(
+    (b) => b.car_id === car.id && b.status === 'confirmed' && new Date(b.end_at) > new Date(),
+  );
+  const earned = ownerBookings
+    .filter((b) => b.car_id === car.id && b.status === 'confirmed')
+    .reduce((s, b) => s + b.total_price, 0);
   const start = nextHour();
   const end = new Date(start.getTime() + 8 * 36e5);
   return `
@@ -579,9 +634,11 @@ function myCarHtml({ car, availability, bookings }, ownerBookings) {
         </div>
         <div class="tile">
           <span class="label">Times you’re offering it</span>
-          ${availability.length
-            ? `<ul class="list">${availability.map((w) => `<li><span>${esc(fmtRange(w.start_at, w.end_at))}</span><button class="btn danger-ghost sm" data-del-window="${w.id}">Remove</button></li>`).join('')}</ul>`
-            : '<p class="muted small" style="margin:0">No times yet, so nobody can book it. Add some below.</p>'}
+          ${
+            availability.length
+              ? `<ul class="list">${availability.map((w) => `<li><span>${esc(fmtRange(w.start_at, w.end_at))}</span><button class="btn danger-ghost sm" data-del-window="${w.id}">Remove</button></li>`).join('')}</ul>`
+              : '<p class="muted small" style="margin:0">No times yet, so nobody can book it. Add some below.</p>'
+          }
           <form class="inline-form" data-window-form>
             <label class="field">Free from <input type="datetime-local" name="start" value="${toLocalInput(start)}" required></label>
             <label class="field">Until <input type="datetime-local" name="end" value="${toLocalInput(end)}" required></label>
@@ -610,30 +667,45 @@ function bindMyCars(details) {
         });
         toast('Price and listing saved.');
         loadMyCars();
-      } catch (err) { toast(err.message); }
+      } catch (err) {
+        toast(err.message);
+      }
     });
 
     $('[data-window-form]', panel).addEventListener('submit', async (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target));
       try {
-        await api('POST', `/api/cars/${car.id}/availability`, { start: fromLocalInput(f.start), end: fromLocalInput(f.end) });
+        await api('POST', `/api/cars/${car.id}/availability`, {
+          start: fromLocalInput(f.start),
+          end: fromLocalInput(f.end),
+        });
         toast('Times added.');
         loadMyCars();
-      } catch (err) { toast(err.message); }
+      } catch (err) {
+        toast(err.message);
+      }
     });
 
     $('[data-quick-week]', panel).addEventListener('click', async () => {
       try {
         for (let i = 0; i < 7; i++) {
-          const s = new Date(); s.setDate(s.getDate() + i); s.setHours(8, 0, 0, 0);
-          const en = new Date(s); en.setHours(20);
+          const s = new Date();
+          s.setDate(s.getDate() + i);
+          s.setHours(8, 0, 0, 0);
+          const en = new Date(s);
+          en.setHours(20);
           if (en <= new Date()) continue;
-          await api('POST', `/api/cars/${car.id}/availability`, { start: (s < new Date() ? new Date() : s).toISOString(), end: en.toISOString() });
+          await api('POST', `/api/cars/${car.id}/availability`, {
+            start: (s < new Date() ? new Date() : s).toISOString(),
+            end: en.toISOString(),
+          });
         }
         toast('Offered 08:00–20:00 for the next 7 days.');
         loadMyCars();
-      } catch (err) { toast(err.message); }
+      } catch (err) {
+        toast(err.message);
+      }
     });
 
     $$('[data-del-window]', panel).forEach((b) =>
@@ -641,7 +713,9 @@ function bindMyCars(details) {
         try {
           await api('DELETE', `/api/cars/${car.id}/availability/${b.dataset.delWindow}`);
           loadMyCars();
-        } catch (err) { toast(err.message); }
+        } catch (err) {
+          toast(err.message);
+        }
       }),
     );
   }
@@ -675,9 +749,15 @@ function openCarForm(car) {
     state.pickMap = makeMap('pick-map');
     state.pickMap.on('click', (e) => setPick(e.latlng.lat, e.latlng.lng));
   }
-  if (state.pickMarker) { state.pickMarker.remove(); state.pickMarker = null; }
+  if (state.pickMarker) {
+    state.pickMarker.remove();
+    state.pickMarker = null;
+  }
   if (car) setPick(car.lat, car.lng);
-  setTimeout(() => { state.pickMap.invalidateSize(); state.pickMap.setView(center, 15); }, 50);
+  setTimeout(() => {
+    state.pickMap.invalidateSize();
+    state.pickMap.setView(center, 15);
+  }, 50);
 }
 
 function setPick(lat, lng) {
@@ -691,7 +771,9 @@ function setPick(lat, lng) {
 function showPhotoPreview() {
   const url = $('#photo-url').value.trim();
   const box = $('#photo-preview');
-  box.innerHTML = url ? `<img src="${esc(url)}" alt="Car photo preview" onerror="this.outerHTML='<span>Can’t load that photo</span>'">` : '<span>No photo yet</span>';
+  box.innerHTML = url
+    ? `<img src="${esc(url)}" alt="Car photo preview" onerror="this.outerHTML='<span>Can’t load that photo</span>'">`
+    : '<span>No photo yet</span>';
   $('#photo-remove').hidden = !url;
 }
 
@@ -716,7 +798,12 @@ $('#photo-file').addEventListener('change', async (e) => {
   $('#car-form-error').textContent = '';
   $('#photo-preview').innerHTML = '<span>Uploading…</span>';
   try {
-    const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file, credentials: 'same-origin' });
+    const res = await fetch('/api/uploads', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
+      credentials: 'same-origin',
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Upload failed.');
     $('#photo-url').value = data.url;
@@ -729,7 +816,10 @@ $('#photo-file').addEventListener('change', async (e) => {
 $('#use-my-location').addEventListener('click', () => {
   if (!navigator.geolocation) return toast('Location isn’t supported in this browser.');
   navigator.geolocation.getCurrentPosition(
-    (p) => { setPick(p.coords.latitude, p.coords.longitude); state.pickMap.setView([p.coords.latitude, p.coords.longitude], 16); },
+    (p) => {
+      setPick(p.coords.latitude, p.coords.longitude);
+      state.pickMap.setView([p.coords.latitude, p.coords.longitude], 16);
+    },
     () => toast('Couldn’t get your location. Click the map instead.'),
   );
 });
@@ -786,7 +876,9 @@ async function loadBookings() {
           await api('POST', `/api/bookings/${btn.dataset.cancel}/cancel`);
           toast('Booking cancelled.');
           loadBookings();
-        } catch (err) { toast(err.message); }
+        } catch (err) {
+          toast(err.message);
+        }
       }),
     );
   } catch (err) {
@@ -799,10 +891,13 @@ function ticketHtml(b, otherLabel) {
   const ended = new Date(b.end_at) <= now;
   const active = new Date(b.start_at) <= now && !ended;
   const status =
-    b.status === 'cancelled' ? '<span class="badge danger">Cancelled</span>'
-    : ended ? '<span class="badge">Completed</span>'
-    : active ? '<span class="badge ok">On the road</span>'
-    : '<span class="badge warn">Upcoming</span>';
+    b.status === 'cancelled'
+      ? '<span class="badge danger">Cancelled</span>'
+      : ended
+        ? '<span class="badge">Completed</span>'
+        : active
+          ? '<span class="badge ok">On the road</span>'
+          : '<span class="badge warn">Upcoming</span>';
   const canCancel = b.status === 'confirmed' && !ended;
   return `
     <article class="ticket ${b.status}">

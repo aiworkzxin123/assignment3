@@ -1,243 +1,313 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kerbside Car Share</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <!-- Login / register -->
-  <section id="auth-view" class="auth" hidden>
-    <div class="auth-art">
-      <a class="brand on-dark" href="#" aria-label="Kerbside Car Share">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2"/><path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21"/></svg></span>
-        <span class="brand-name">Kerbside</span>
-      </a>
-      <div class="auth-copy">
-        <p class="eyebrow">Neighbourhood car share</p>
-        <h1 class="display">The car you need is parked down the street.</h1>
-        <p class="lede">Rent your neighbours’ cars by the hour or the day. List yours when you’re not using it. Up to 10 households, one shared set of wheels.</p>
-      </div>
-      <div class="auth-mosaic" aria-hidden="true">
-        <img src="images/cars/tesla-model3.jpg" alt="">
-        <img src="images/cars/honda-jazz.jpg" alt="">
-        <img src="images/cars/mini-cooper.jpg" alt="">
-      </div>
-      <div class="road" aria-hidden="true"></div>
-    </div>
-    <div class="auth-panel">
-      <div class="auth-card">
-        <h2 class="display-sm">Get the keys</h2>
-        <div class="seg" role="tablist">
-          <button type="button" class="seg-btn active" data-auth-tab="login">Log in</button>
-          <button type="button" class="seg-btn" data-auth-tab="register">Create account</button>
-        </div>
-        <form id="login-form" class="stack">
-          <label class="field">Username <input name="username" autocomplete="username" required></label>
-          <label class="field">Password <input name="password" type="password" autocomplete="current-password" required></label>
-          <button class="btn primary lg" type="submit">Log in</button>
-        </form>
-        <form id="register-form" class="stack" hidden>
-          <label class="field">Username <input name="username" autocomplete="username" required minlength="3" maxlength="30"></label>
-          <label class="field">Display name <input name="displayName" maxlength="50" placeholder="e.g. Sam at No. 12"></label>
-          <label class="field">Password <input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
-          <label class="field" id="invite-field" hidden>Invite code <input name="inviteCode"></label>
-          <button class="btn primary lg" type="submit">Create account</button>
-          <div class="capacity" id="member-count"></div>
-        </form>
-        <p class="error" id="auth-error" role="alert"></p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Main app -->
-  <div id="app-view" hidden>
-    <header class="topbar">
-      <div class="topbar-in">
-        <a class="brand on-dark" href="#" data-view="browse" aria-label="Kerbside home">
-          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2"/><path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21"/></svg></span>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kerbside Car Share</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Login / register -->
+    <section id="auth-view" class="auth" hidden>
+      <div class="auth-art">
+        <a class="brand on-dark" href="#" aria-label="Kerbside Car Share">
+          <span class="brand-mark" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="2.2" />
+              <path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21" /></svg
+          ></span>
           <span class="brand-name">Kerbside</span>
         </a>
-        <nav class="tabs" role="tablist">
-          <button type="button" class="tab active" data-view="browse">Find a car</button>
-          <button type="button" class="tab" data-view="mycars">My garage</button>
-          <button type="button" class="tab" data-view="bookings">Trips</button>
-        </nav>
-        <div class="user">
-          <span class="avatar" id="user-avatar" aria-hidden="true"></span>
-          <span id="user-name"></span>
-          <button type="button" class="btn ghost-dark sm" id="logout-btn">Log out</button>
+        <div class="auth-copy">
+          <p class="eyebrow">Neighbourhood car share</p>
+          <h1 class="display">The car you need is parked down the street.</h1>
+          <p class="lede">
+            Rent your neighbours’ cars by the hour or the day. List yours when you’re not using it. Up to 10 households,
+            one shared set of wheels.
+          </p>
         </div>
-      </div>
-    </header>
-
-    <!-- Browse -->
-    <section id="view-browse" class="view">
-      <div class="hero">
-        <div class="hero-in">
-          <div class="hero-copy">
-            <p class="eyebrow">Parked near you</p>
-            <h1 class="display">Borrow a car from down the street.</h1>
-            <div class="hero-stats" id="hero-stats"></div>
-          </div>
-          <div class="hero-feature" id="hero-feature"></div>
+        <div class="auth-mosaic" aria-hidden="true">
+          <img src="images/cars/tesla-model3.jpg" alt="" />
+          <img src="images/cars/honda-jazz.jpg" alt="" />
+          <img src="images/cars/mini-cooper.jpg" alt="" />
         </div>
         <div class="road" aria-hidden="true"></div>
       </div>
-
-      <div class="page">
-        <form id="filters" class="search-panel" autocomplete="off">
-          <label class="field grow">Search
-            <input name="q" placeholder="Make, model or street">
-          </label>
-          <label class="field">Pick-up <input name="from" type="datetime-local"></label>
-          <label class="field">Return <input name="to" type="datetime-local"></label>
-          <label class="field">Seats
-            <select name="seats">
-              <option value="">Any</option><option value="2">2+</option><option value="4">4+</option><option value="5">5+</option><option value="7">7+</option>
-            </select>
-          </label>
-          <label class="field">Fuel
-            <select name="fuel">
-              <option value="">Any</option><option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option>
-            </select>
-          </label>
-          <label class="field narrow">Max / hour <input name="maxPrice" type="number" min="0" step="0.5" placeholder="Any"></label>
-          <button type="button" class="btn ghost" id="clear-filters">Clear</button>
-        </form>
-
-        <div class="results-head">
-          <div>
-            <h2 class="display-sm" id="result-title">Available cars</h2>
-            <p class="muted" id="result-count"></p>
+      <div class="auth-panel">
+        <div class="auth-card">
+          <h2 class="display-sm">Get the keys</h2>
+          <div class="seg" role="tablist">
+            <button type="button" class="seg-btn active" data-auth-tab="login">Log in</button>
+            <button type="button" class="seg-btn" data-auth-tab="register">Create account</button>
           </div>
-          <div class="seg">
-            <button type="button" class="seg-btn active" data-browse-mode="list">Cards</button>
-            <button type="button" class="seg-btn" data-browse-mode="map">Map</button>
-          </div>
+          <form id="login-form" class="stack">
+            <label class="field">Username <input name="username" autocomplete="username" required /></label>
+            <label class="field"
+              >Password <input name="password" type="password" autocomplete="current-password" required
+            /></label>
+            <button class="btn primary lg" type="submit">Log in</button>
+          </form>
+          <form id="register-form" class="stack" hidden>
+            <label class="field"
+              >Username <input name="username" autocomplete="username" required minlength="3" maxlength="30"
+            /></label>
+            <label class="field"
+              >Display name <input name="displayName" maxlength="50" placeholder="e.g. Sam at No. 12"
+            /></label>
+            <label class="field"
+              >Password <input name="password" type="password" autocomplete="new-password" required minlength="8"
+            /></label>
+            <label class="field" id="invite-field" hidden>Invite code <input name="inviteCode" /></label>
+            <button class="btn primary lg" type="submit">Create account</button>
+            <div class="capacity" id="member-count"></div>
+          </form>
+          <p class="error" id="auth-error" role="alert"></p>
         </div>
-        <div id="car-grid" class="grid"></div>
-        <div id="browse-map" class="map big-map" hidden></div>
       </div>
     </section>
 
-    <!-- My cars -->
-    <section id="view-mycars" class="view" hidden>
-      <div class="page">
-        <div class="page-head">
-          <div>
-            <p class="eyebrow dark">Your garage</p>
-            <h1 class="display-sm">Cars you’re sharing</h1>
-            <p class="muted">Set your prices, choose when each car is free, and hide it when you need it yourself.</p>
+    <!-- Main app -->
+    <div id="app-view" hidden>
+      <header class="topbar">
+        <div class="topbar-in">
+          <a class="brand on-dark" href="#" data-view="browse" aria-label="Kerbside home">
+            <span class="brand-mark" aria-hidden="true"
+              ><svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="2.2" />
+                <path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21" /></svg
+            ></span>
+            <span class="brand-name">Kerbside</span>
+          </a>
+          <nav class="tabs" role="tablist">
+            <button type="button" class="tab active" data-view="browse">Find a car</button>
+            <button type="button" class="tab" data-view="mycars">My garage</button>
+            <button type="button" class="tab" data-view="bookings">Trips</button>
+          </nav>
+          <div class="user">
+            <span class="avatar" id="user-avatar" aria-hidden="true"></span>
+            <span id="user-name"></span>
+            <button type="button" class="btn ghost-dark sm" id="logout-btn">Log out</button>
           </div>
-          <button type="button" class="btn primary lg" id="add-car-btn">+ List a car</button>
         </div>
-        <div id="my-cars" class="stack-lg"></div>
-      </div>
-    </section>
+      </header>
 
-    <!-- Bookings -->
-    <section id="view-bookings" class="view" hidden>
-      <div class="page">
-        <div class="page-head">
-          <div>
-            <p class="eyebrow dark">Trips</p>
-            <h1 class="display-sm">Your rentals</h1>
-            <p class="muted">Cars you’ve booked, and neighbours who’ve booked yours. Keys and payment are arranged between you.</p>
+      <!-- Browse -->
+      <section id="view-browse" class="view">
+        <div class="hero">
+          <div class="hero-in">
+            <div class="hero-copy">
+              <p class="eyebrow">Parked near you</p>
+              <h1 class="display">Borrow a car from down the street.</h1>
+              <div class="hero-stats" id="hero-stats"></div>
+            </div>
+            <div class="hero-feature" id="hero-feature"></div>
           </div>
+          <div class="road" aria-hidden="true"></div>
         </div>
-        <h2 class="section-title">Cars I’m renting</h2>
-        <div id="renter-bookings" class="stack"></div>
-        <h2 class="section-title">Bookings of my cars</h2>
-        <div id="owner-bookings" class="stack"></div>
-      </div>
-    </section>
-  </div>
 
-  <!-- Car details / booking -->
-  <dialog id="car-dialog" class="dialog wide">
-    <div id="car-dialog-body"></div>
-  </dialog>
-
-  <!-- Add / edit car -->
-  <dialog id="edit-dialog" class="dialog">
-    <form id="car-form" class="dialog-body stack" method="dialog">
-      <div class="dialog-head">
-        <h2 class="display-sm" id="car-form-title">List a car</h2>
-        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
-      </div>
-
-      <div class="photo-field">
-        <div class="photo-preview" id="photo-preview"><span>No photo yet</span></div>
-        <div class="stack">
-          <span class="label">Photo</span>
-          <div class="row">
-            <label class="btn sm file-btn">Upload a photo
-              <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp">
+        <div class="page">
+          <form id="filters" class="search-panel" autocomplete="off">
+            <label class="field grow"
+              >Search
+              <input name="q" placeholder="Make, model or street" />
             </label>
-            <button type="button" class="btn ghost sm" id="photo-remove">Remove photo</button>
+            <label class="field">Pick-up <input name="from" type="datetime-local" /></label>
+            <label class="field">Return <input name="to" type="datetime-local" /></label>
+            <label class="field"
+              >Seats
+              <select name="seats">
+                <option value="">Any</option>
+                <option value="2">2+</option>
+                <option value="4">4+</option>
+                <option value="5">5+</option>
+                <option value="7">7+</option>
+              </select>
+            </label>
+            <label class="field"
+              >Fuel
+              <select name="fuel">
+                <option value="">Any</option>
+                <option>Petrol</option>
+                <option>Diesel</option>
+                <option>Hybrid</option>
+                <option>Electric</option>
+              </select>
+            </label>
+            <label class="field narrow"
+              >Max / hour <input name="maxPrice" type="number" min="0" step="0.5" placeholder="Any"
+            /></label>
+            <button type="button" class="btn ghost" id="clear-filters">Clear</button>
+          </form>
+
+          <div class="results-head">
+            <div>
+              <h2 class="display-sm" id="result-title">Available cars</h2>
+              <p class="muted" id="result-count"></p>
+            </div>
+            <div class="seg">
+              <button type="button" class="seg-btn active" data-browse-mode="list">Cards</button>
+              <button type="button" class="seg-btn" data-browse-mode="map">Map</button>
+            </div>
           </div>
-          <label class="field">…or paste a link to a photo <input name="image_url" id="photo-url" placeholder="https://…"></label>
-          <span class="muted small">JPEG, PNG or WebP, up to 5 MB. A photo of the actual car helps neighbours spot it.</span>
+          <div id="car-grid" class="grid"></div>
+          <div id="browse-map" class="map big-map" hidden></div>
         </div>
-      </div>
+      </section>
 
-      <fieldset class="group">
-        <legend>The car</legend>
-        <div class="form-grid">
-          <label class="field">Make <input name="make" required maxlength="50" placeholder="Toyota"></label>
-          <label class="field">Model <input name="model" required maxlength="50" placeholder="Corolla"></label>
-          <label class="field">Year <input name="year" type="number" min="1950" max="2100"></label>
-          <label class="field">Seats <input name="seats" type="number" min="1" max="12" value="5" required></label>
-          <label class="field">Fuel
-            <select name="fuel"><option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option></select>
+      <!-- My cars -->
+      <section id="view-mycars" class="view" hidden>
+        <div class="page">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow dark">Your garage</p>
+              <h1 class="display-sm">Cars you’re sharing</h1>
+              <p class="muted">Set your prices, choose when each car is free, and hide it when you need it yourself.</p>
+            </div>
+            <button type="button" class="btn primary lg" id="add-car-btn">+ List a car</button>
+          </div>
+          <div id="my-cars" class="stack-lg"></div>
+        </div>
+      </section>
+
+      <!-- Bookings -->
+      <section id="view-bookings" class="view" hidden>
+        <div class="page">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow dark">Trips</p>
+              <h1 class="display-sm">Your rentals</h1>
+              <p class="muted">
+                Cars you’ve booked, and neighbours who’ve booked yours. Keys and payment are arranged between you.
+              </p>
+            </div>
+          </div>
+          <h2 class="section-title">Cars I’m renting</h2>
+          <div id="renter-bookings" class="stack"></div>
+          <h2 class="section-title">Bookings of my cars</h2>
+          <div id="owner-bookings" class="stack"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Car details / booking -->
+    <dialog id="car-dialog" class="dialog wide">
+      <div id="car-dialog-body"></div>
+    </dialog>
+
+    <!-- Add / edit car -->
+    <dialog id="edit-dialog" class="dialog">
+      <form id="car-form" class="dialog-body stack" method="dialog">
+        <div class="dialog-head">
+          <h2 class="display-sm" id="car-form-title">List a car</h2>
+          <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+        </div>
+
+        <div class="photo-field">
+          <div class="photo-preview" id="photo-preview"><span>No photo yet</span></div>
+          <div class="stack">
+            <span class="label">Photo</span>
+            <div class="row">
+              <label class="btn sm file-btn"
+                >Upload a photo
+                <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp" />
+              </label>
+              <button type="button" class="btn ghost sm" id="photo-remove">Remove photo</button>
+            </div>
+            <label class="field"
+              >…or paste a link to a photo <input name="image_url" id="photo-url" placeholder="https://…"
+            /></label>
+            <span class="muted small"
+              >JPEG, PNG or WebP, up to 5 MB. A photo of the actual car helps neighbours spot it.</span
+            >
+          </div>
+        </div>
+
+        <fieldset class="group">
+          <legend>The car</legend>
+          <div class="form-grid">
+            <label class="field">Make <input name="make" required maxlength="50" placeholder="Toyota" /></label>
+            <label class="field">Model <input name="model" required maxlength="50" placeholder="Corolla" /></label>
+            <label class="field">Year <input name="year" type="number" min="1950" max="2100" /></label>
+            <label class="field">Seats <input name="seats" type="number" min="1" max="12" value="5" required /></label>
+            <label class="field"
+              >Fuel
+              <select name="fuel">
+                <option>Petrol</option>
+                <option>Diesel</option>
+                <option>Hybrid</option>
+                <option>Electric</option>
+              </select>
+            </label>
+            <label class="field"
+              >Gearbox
+              <select name="transmission">
+                <option>Automatic</option>
+                <option>Manual</option>
+              </select>
+            </label>
+            <label class="field">Colour <input name="color" maxlength="30" /></label>
+          </div>
+          <label class="field"
+            >Notes for renters
+            <textarea
+              name="description"
+              rows="2"
+              maxlength="1000"
+              placeholder="Anything renters should know"
+            ></textarea>
           </label>
-          <label class="field">Gearbox
-            <select name="transmission"><option>Automatic</option><option>Manual</option></select>
-          </label>
-          <label class="field">Colour <input name="color" maxlength="30"></label>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Price</legend>
+          <div class="form-grid">
+            <label class="field"
+              >Per hour <input name="price_per_hour" type="number" min="0" step="0.5" required
+            /></label>
+            <label class="field"
+              >Per day <input name="price_per_day" type="number" min="0" step="0.5" required
+            /></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Where it’s parked</legend>
+          <label class="field"
+            >Pick-up spot <input name="address" maxlength="200" placeholder="Outside No. 12, Elm Road"
+          /></label>
+          <div class="row between">
+            <span class="muted small">Click the map to drop a pin where the car is parked.</span>
+            <button type="button" class="btn ghost sm" id="use-my-location">Use my location</button>
+          </div>
+          <div id="pick-map" class="map pick-map"></div>
+          <input type="hidden" name="lat" /><input type="hidden" name="lng" />
+        </fieldset>
+
+        <label class="check"
+          ><input type="checkbox" name="is_listed" checked /> Listed for rent (untick to hide it for now)</label
+        >
+        <p class="error" id="car-form-error" role="alert"></p>
+        <div class="row end">
+          <button type="button" class="btn danger-ghost" id="delete-car-btn" hidden>Delete car</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Save car</button>
         </div>
-        <label class="field">Notes for renters <textarea name="description" rows="2" maxlength="1000" placeholder="Anything renters should know"></textarea></label>
-      </fieldset>
+      </form>
+    </dialog>
 
-      <fieldset class="group">
-        <legend>Price</legend>
-        <div class="form-grid">
-          <label class="field">Per hour <input name="price_per_hour" type="number" min="0" step="0.5" required></label>
-          <label class="field">Per day <input name="price_per_day" type="number" min="0" step="0.5" required></label>
-        </div>
-      </fieldset>
+    <div id="toast" class="toast" role="status" hidden></div>
 
-      <fieldset class="group">
-        <legend>Where it’s parked</legend>
-        <label class="field">Pick-up spot <input name="address" maxlength="200" placeholder="Outside No. 12, Elm Road"></label>
-        <div class="row between">
-          <span class="muted small">Click the map to drop a pin where the car is parked.</span>
-          <button type="button" class="btn ghost sm" id="use-my-location">Use my location</button>
-        </div>
-        <div id="pick-map" class="map pick-map"></div>
-        <input type="hidden" name="lat"><input type="hidden" name="lng">
-      </fieldset>
-
-      <label class="check"><input type="checkbox" name="is_listed" checked> Listed for rent (untick to hide it for now)</label>
-      <p class="error" id="car-form-error" role="alert"></p>
-      <div class="row end">
-        <button type="button" class="btn danger-ghost" id="delete-car-btn" hidden>Delete car</button>
-        <span class="spacer"></span>
-        <button type="button" class="btn ghost" data-close>Cancel</button>
-        <button type="submit" class="btn primary">Save car</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div id="toast" class="toast" role="status" hidden></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script src="app.js"></script>
-</body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

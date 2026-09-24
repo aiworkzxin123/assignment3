@@ -67,11 +67,15 @@ test('hosted whyNot() applies the window and overlap rules', () => {
 
 test('hosted mergeWindow() merges overlapping and touching windows like the server', () => {
   const { mergeWindow } = loadHosted();
-  const list = [{ s: at(0), e: at(2) }, { s: at(5), e: at(7) }, { s: at(20), e: at(22) }];
-  assert.deepEqual(
-    plain(mergeWindow(list, at(2), at(6))),
-    [{ s: at(0), e: at(7) }, { s: at(20), e: at(22) }],
-  );
+  const list = [
+    { s: at(0), e: at(2) },
+    { s: at(5), e: at(7) },
+    { s: at(20), e: at(22) },
+  ];
+  assert.deepEqual(plain(mergeWindow(list, at(2), at(6))), [
+    { s: at(0), e: at(7) },
+    { s: at(20), e: at(22) },
+  ]);
 });
 
 test('hosted mergeWindow() drops windows that ended over a day ago (hosted-only housekeeping)', () => {
