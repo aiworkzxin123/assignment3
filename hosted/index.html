@@ -1,0 +1,880 @@
+<title>Kerbside Car Share</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+:root {
+  --asphalt: #111a24; --asphalt-2: #1b2735; --asphalt-line: #2a3949; --on-asphalt: #eef2f6; --on-asphalt-2: #9fb0c2;
+  --ground: #f2f4f7; --surface: #ffffff; --sunken: #eef1f5; --ink: #121a23; --ink-2: #5b6978;
+  --line: #e0e5eb; --line-2: #cad2dc;
+  --sign: #ffb020; --sign-deep: #e89400; --sign-ink: #1d1402; --kerb: #ffb020; --kerb-soft: #ffefcf;
+  --ok: #0f7a55; --ok-soft: #d8f3e7; --bad: #c02f2f; --bad-soft: #fde3e3;
+  --avail: #19a974; --booked: #e0564f; --plan-grid: #e3e8ee; --plan-bg: #f7f9fb; --focus: #2f7cf6;
+  --shadow: 0 1px 2px rgba(17,26,36,.05), 0 8px 24px rgba(17,26,36,.08);
+  --shadow-lg: 0 2px 6px rgba(17,26,36,.08), 0 24px 48px rgba(17,26,36,.16);
+  --font: "Archivo", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --asphalt: #070c12; --asphalt-2: #111a24; --asphalt-line: #22303f;
+    --ground: #0c1219; --surface: #151e28; --sunken: #1d2834; --ink: #e7edf3; --ink-2: #93a2b2;
+    --line: #253241; --line-2: #33445a; --sign: #ffbe3d; --sign-deep: #f0a51f; --kerb-soft: #3a2a08;
+    --ok: #5ad6a2; --ok-soft: #0f3326; --bad: #ff8a82; --bad-soft: #3c1616; --avail: #2cc48b; --booked: #f06a62;
+    --plan-grid: #1f2a36; --plan-bg: #111922; --focus: #6aa5ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); --shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --asphalt: #070c12; --asphalt-2: #111a24; --asphalt-line: #22303f;
+  --ground: #0c1219; --surface: #151e28; --sunken: #1d2834; --ink: #e7edf3; --ink-2: #93a2b2;
+  --line: #253241; --line-2: #33445a; --sign: #ffbe3d; --sign-deep: #f0a51f; --kerb-soft: #3a2a08;
+  --ok: #5ad6a2; --ok-soft: #0f3326; --bad: #ff8a82; --bad-soft: #3c1616; --avail: #2cc48b; --booked: #f06a62;
+  --plan-grid: #1f2a36; --plan-bg: #111922; --focus: #6aa5ff;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); --shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--font); padding-inline: 16px; padding-block: 0 56px; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-stretch: 118%; font-weight: 800; letter-spacing: -.01em; text-wrap: balance; margin: 0; line-height: 1.1; }
+h2 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); }
+h3 { font-size: 1.15rem; font-stretch: 112%; font-weight: 750; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: .85rem; }
+.wrap { max-width: 1160px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-2); font-weight: 700; }
+.eyebrow { font-size: .74rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--sign); margin: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Top bar on asphalt, with a dashed road line under it */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--asphalt); color: var(--on-asphalt); margin-inline: -16px; padding: 10px 16px 0; }
+.top-in { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-bottom: 10px; }
+.kerb { height: 8px; margin-inline: -16px; background: var(--asphalt-2); position: relative; overflow: hidden; }
+.kerb::after { content: ""; position: absolute; inset: 2px 0; background: repeating-linear-gradient(90deg, var(--sign) 0 36px, transparent 36px 68px); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand h1 { font-size: 1.25rem; font-stretch: 125%; color: var(--on-asphalt); }
+.psign { width: 34px; height: 34px; border-radius: 10px; background: var(--sign); display: grid; place-items: center; }
+.psign svg { width: 22px; height: 22px; stroke: var(--sign-ink); fill: none; stroke-width: 2; stroke-linecap: round; }
+nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.tab { font: 650 .95rem var(--font); border: 0; background: transparent; color: var(--on-asphalt-2); padding: 8px 15px; border-radius: 999px; cursor: pointer; }
+.tab:hover { color: var(--on-asphalt); background: var(--asphalt-2); }
+.tab[aria-selected="true"] { background: var(--sign); color: var(--sign-ink); }
+.who { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--on-asphalt-2); }
+.who img { width: 30px; height: 30px; border-radius: 50%; }
+
+/* Browse band: the dark hero with stats and a featured car */
+.band { background: radial-gradient(110% 120% at 85% 0%, var(--asphalt-2), var(--asphalt) 65%); color: var(--on-asphalt); margin-inline: -16px; padding: 30px 16px 70px; margin-top: -18px; }
+.band-in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: center; }
+.band h2 { font-stretch: 125%; font-size: clamp(1.9rem, 4.4vw, 3.1rem); line-height: 1.02; letter-spacing: -.02em; color: var(--on-asphalt); margin-top: 10px; }
+.stats { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 22px; }
+.stats b { display: block; font-stretch: 125%; font-weight: 800; font-size: 1.8rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stats span { font-size: .8rem; color: var(--on-asphalt-2); }
+.feature { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.45); cursor: pointer; border: 0; padding: 0; background: var(--asphalt-2); color: #fff; text-align: left; width: 100%; }
+.feature img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; transition: transform .5s; }
+.feature:hover img { transform: scale(1.03); }
+.feature .tag { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; justify-content: space-between; align-items: end; gap: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(8,12,18,.74); backdrop-filter: blur(8px); }
+.feature .tag small { display: block; color: var(--sign); font-weight: 700; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; }
+.feature .tag strong { font-stretch: 115%; font-size: 1.05rem; }
+.feature .tag b { font-stretch: 120%; font-size: 1.35rem; white-space: nowrap; }
+.feature .tag b span { font-size: .78rem; font-weight: 500; opacity: .75; }
+
+/* Controls */
+button { font: inherit; }
+.btn { border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-weight: 650; white-space: nowrap; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--sunken); border-color: var(--line-2); }
+.btn.go { background: var(--sign); border-color: var(--sign); color: var(--sign-ink); }
+.btn.go:hover { background: var(--sign-deep); border-color: var(--sign-deep); }
+.btn.warn { color: var(--bad); background: transparent; border-color: transparent; }
+.btn.warn:hover { background: var(--bad-soft); }
+.btn.armed { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.sm { padding: 5px 12px; font-size: .85rem; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+input, select, textarea { font: inherit; font-size: .95rem; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 9px; padding: 9px 11px; min-width: 0; width: 100%; }
+input:not([type=checkbox]):not([type=file]), select { height: 44px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--sign-deep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sign) 28%, transparent); }
+label.f { display: flex; flex-direction: column; gap: 5px; font-size: .72rem; color: var(--ink-2); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+label.chk { display: flex; gap: 8px; align-items: center; font-size: .95rem; }
+label.chk input { width: 18px; height: 18px; accent-color: var(--sign-deep); }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 999px; padding: 4px; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 16px; border-radius: 999px; cursor: pointer; font-weight: 650; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+.filters { position: relative; z-index: 2; margin-top: -58px; display: grid; grid-template-columns: 1.7fr repeat(3, .8fr) 1.3fr 1.3fr auto; gap: 10px; align-items: end; background: var(--surface); border-radius: 18px; padding: 16px; box-shadow: var(--shadow-lg); }
+@media (max-width: 900px) { .filters { grid-template-columns: repeat(2, 1fr); } .filters .q { grid-column: 1 / -1; } .band-in { grid-template-columns: 1fr; } }
+
+/* Car cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 20px; }
+.car { background: var(--surface); border: 0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 9px; cursor: pointer; text-align: left; color: inherit; box-shadow: var(--shadow); overflow: hidden; }
+.car:hover { box-shadow: var(--shadow-lg); }
+.photo { position: relative; margin: -16px -16px 4px; aspect-ratio: 16 / 10; max-width: calc(100% + 32px); background: var(--sunken); overflow: hidden; display: grid; place-items: center; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo .none { font-weight: 700; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.photo .pill { position: absolute; top: 12px; left: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.photo .tagp { position: absolute; right: 12px; bottom: 12px; background: var(--asphalt); color: #fff; border-radius: 10px; padding: 5px 10px; font-stretch: 115%; font-weight: 800; font-size: 1.05rem; line-height: 1.1; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.photo .tagp span { font-weight: 500; font-size: .75rem; opacity: .75; }
+.hero { margin: -18px -18px 0; position: relative; }
+.hero .photo { margin: 0; max-width: 100%; aspect-ratio: 21 / 9; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.25), transparent 30%, transparent 50%, rgba(5,9,14,.85)); pointer-events: none; }
+.hero figcaption { position: absolute; top: 14px; left: 16px; right: 64px; z-index: 1; font-size: .68rem; color: rgba(255,255,255,.8); }
+.hero-title { position: absolute; left: 18px; right: 18px; bottom: 14px; z-index: 1; color: #fff; display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.hero-title h2 { color: #fff; }
+.hero-title .pill { margin-bottom: 6px; }
+.x.on-photo { position: absolute; top: 12px; right: 12px; z-index: 2; background: rgba(10,15,20,.55); color: #fff; }
+.thumb { width: 150px; flex: none; }
+.thumb .photo { margin: 0; max-width: 100%; border-radius: 10px; }
+.photo-edit { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; }
+.photo-edit .photo { margin: 0; max-width: 100%; border-radius: 12px; border: 1.5px dashed var(--line-2); }
+.filebtn { position: relative; overflow: hidden; display: inline-block; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.filebtn:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 640px) { .photo-edit { grid-template-columns: 1fr; } }
+.car-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.car h3 { font-size: 1.15rem; }
+.bay { font-size: .75rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.specs { font-size: .85rem; color: var(--ink-2); }
+.tariff { display: flex; gap: 10px; align-items: stretch; }
+.tariff > div { flex: 1; background: var(--sunken); border-radius: 10px; padding: 8px 11px; }
+.tariff b { display: block; font-stretch: 120%; font-weight: 800; font-size: 1.25rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tariff span { font-size: .76rem; color: var(--ink-2); }
+.car-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--line-2); font-size: .85rem; }
+.car-foot .goto { font-weight: 700; }
+.car:hover .goto { color: var(--sign-deep); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--ink-2); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.soon { background: var(--kerb-soft); color: #8f5500; }
+.pill.no { background: var(--bad-soft); color: var(--bad); }
+.pill.demo { background: transparent; border: 1px solid var(--line-2); }
+.pill.demo::before { display: none; }
+.empty { padding: 40px 16px; text-align: center; color: var(--ink-2); border: 1.5px dashed var(--line-2); border-radius: 14px; background: var(--surface); }
+
+/* Plan (map) */
+.plan-box { background: var(--plan-bg); border-radius: 14px; padding: 8px; box-shadow: var(--shadow); }
+.plan { width: 100%; height: auto; display: block; max-height: 70vh; }
+.plan text { fill: var(--ink-2); font: 600 11px var(--font); }
+.pin { cursor: pointer; }
+.pin rect { fill: var(--asphalt); stroke: var(--sign); stroke-width: 2; }
+.pin.off rect { fill: #4a5663; stroke: #8a97a6; }
+.pin text { fill: #fff; font: 800 12px var(--font); }
+.pin:focus-visible rect { stroke: var(--focus); stroke-width: 3; }
+.pin:hover rect { filter: brightness(1.2); }
+
+/* Dialog */
+dialog { border: 0; border-radius: 20px; padding: 0; background: var(--surface); color: var(--ink); width: min(820px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: var(--shadow-lg); }
+dialog::backdrop { background: rgba(5,9,14,.6); backdrop-filter: blur(3px); }
+.dlg { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.x { border: 0; background: var(--sunken); color: var(--ink-2); width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; line-height: 1; flex: none; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.box { background: var(--sunken); border-radius: 14px; padding: 16px; }
+.box.book { background: var(--surface); border: 1.5px solid var(--line); box-shadow: var(--shadow); }
+.box.book #bk-quote { font-stretch: 120%; font-weight: 800; font-size: 1.3rem; }
+.err { color: var(--bad); font-size: .9rem; min-height: 1.3em; margin: 0; }
+.slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.slots li { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: var(--sunken); border-radius: 10px; padding: 8px 12px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.panel .slots li { background: var(--surface); }
+
+/* 7-day timeline */
+.tl { display: flex; flex-direction: column; gap: 5px; }
+.tl-row { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; font-size: .78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tl-bar { position: relative; height: 18px; background: var(--sunken); border-radius: 5px; overflow: hidden; background-image: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); }
+.tl-bar i { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; }
+.tl-bar i.a { background: var(--avail); }
+.tl-bar i.b { background: var(--booked); }
+.tl-axis { display: grid; grid-template-columns: 80px 1fr; gap: 8px; font-size: .68rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tl-axis div:last-child { display: flex; justify-content: space-between; }
+.legend { display: flex; gap: 14px; font-size: .78rem; color: var(--ink-2); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
+
+/* My cars & bookings */
+.panel { background: var(--surface); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow); }
+.panel .inline { background: var(--sunken); border-radius: 12px; padding: 12px; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.inline label.f { flex: 1 1 140px; }
+.bk { position: relative; background: var(--surface); border-radius: 16px; display: grid; grid-template-columns: 130px 1fr auto; overflow: hidden; box-shadow: var(--shadow); }
+.bk.dim { opacity: .55; }
+.bk .photo { margin: 0; max-width: 100%; aspect-ratio: auto; height: 100%; min-height: 104px; }
+.bk-main { padding: 12px 16px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bk-stub { position: relative; padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; align-items: end; gap: 6px; border-left: 2px dashed var(--line-2); min-width: 130px; }
+.bk-stub::before, .bk-stub::after { content: ""; position: absolute; left: -11px; width: 20px; height: 20px; border-radius: 50%; background: var(--ground); }
+.bk-stub::before { top: -10px; }
+.bk-stub::after { bottom: -10px; }
+.bk-stub b { font-stretch: 122%; font-weight: 800; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+
+.gate { max-width: 480px; margin: 48px auto; background: var(--surface); border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-lg); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--asphalt); color: var(--on-asphalt); padding: 10px 16px; border-radius: 12px; z-index: 50; max-width: calc(100vw - 32px); border-left: 4px solid var(--sign); box-shadow: var(--shadow-lg); }
+
+@media (max-width: 640px) {
+  .two { grid-template-columns: 1fr; }
+  nav { margin-left: 0; width: 100%; }
+  .tab { flex: 1; padding: 7px 8px; }
+  .who span { display: none; }
+  .brand h1 { font-size: 1.05rem; }
+  .bk { grid-template-columns: 96px 1fr; }
+  .bk-stub { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; border-left: 0; border-top: 2px dashed var(--line-2); }
+  .bk-stub::before, .bk-stub::after { display: none; }
+  .hero .photo { aspect-ratio: 16 / 10; }
+  .thumb { width: 100%; }
+}
+@media (prefers-reduced-motion: no-preference) { .car { transition: box-shadow .2s, transform .2s; } .car:hover { transform: translateY(-3px); } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><div class="psign" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2"/><path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21"/></svg></div><h1>Kerbside</h1></div>
+    <nav role="tablist" id="nav" hidden>
+      <button class="tab" role="tab" id="tab-browse" data-view="browse" aria-selected="true">Find a car</button>
+      <button class="tab" role="tab" id="tab-mine" data-view="mine" aria-selected="false">My garage</button>
+      <button class="tab" role="tab" id="tab-trips" data-view="trips" aria-selected="false">Trips</button>
+    </nav>
+    <div class="who" id="who"></div>
+  </div>
+  <div class="kerb" aria-hidden="true"></div>
+</header>
+
+<main class="wrap" id="main" style="margin-top:16px">
+  <div class="empty" id="loading">Connecting to the neighbourhood board…</div>
+</main>
+
+<dialog id="dlg"><div class="dlg" id="dlg-body"></div></dialog>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+'use strict';
+const H = 36e5, DAY = 864e5;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+const S = {
+  db: null, user: null, uid: null, isOwner: false,
+  settings: { currency: '$', maxMembers: 10 },
+  members: [], cars: [], bookings: [], profiles: {},
+  view: 'browse', mode: 'list',
+  filters: { q: '', seats: '', fuel: '', maxPrice: '', from: '', to: '' },
+  loaded: { members: false, cars: false, bookings: false },
+};
+
+const money = (n) => S.settings.currency + (Number(n) % 1 ? Number(n).toFixed(2) : Number(n).toFixed(0));
+const fmt = (t) => new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtRange = (a, b) => {
+  const same = new Date(a).toDateString() === new Date(b).toDateString();
+  return `${fmt(a)} → ${same ? new Date(b).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : fmt(b)}`;
+};
+const pad = (n) => String(n).padStart(2, '0');
+const toLocal = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fromLocal = (v) => (v ? new Date(v).getTime() : NaN);
+const nextHour = () => { const d = new Date(); d.setMinutes(0, 0, 0); return d.getTime() + H; };
+
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
+
+// Two-tap confirmation, since the viewer blocks confirm().
+function armed(btn, label = 'Tap again to confirm') {
+  if (btn.dataset.armed) return true;
+  btn.dataset.armed = '1'; const old = btn.textContent; btn.textContent = label; btn.classList.add('armed');
+  setTimeout(() => { delete btn.dataset.armed; btn.textContent = old; btn.classList.remove('armed'); }, 3500);
+  return false;
+}
+
+// ---------- pricing & availability (same rules as the local server) ----------
+function quote(car, s, e) {
+  const hours = Math.ceil((e - s) / H), days = Math.floor(hours / 24), rem = hours % 24;
+  const total = Math.round((days * car.pricePerDay + Math.min(rem * car.pricePerHour, car.pricePerDay)) * 100) / 100;
+  return { hours, days, rem, total };
+}
+const liveBookings = (carId) => S.bookings.filter((b) => b.carId === carId && b.status === 'confirmed');
+const futureWindows = (car) => (car.windows || []).filter((w) => w.e > Date.now()).sort((a, b) => a.s - b.s);
+function whyNot(car, s, e, bookings = liveBookings(car.id)) {
+  if (!(e > s)) return 'Return time must be after pick-up time.';
+  if (s < Date.now() - 10 * 6e4) return 'Pick-up time is in the past.';
+  if (!car.listed) return 'This car isn’t listed right now.';
+  if (car.ownerId === S.uid) return 'This is your own car.';
+  if (!(car.windows || []).some((w) => w.s <= s && w.e >= e)) return 'The owner hasn’t offered the car for that whole time.';
+  if (bookings.some((b) => b.start < e && b.end > s)) return 'Someone has already booked part of that time.';
+  return null;
+}
+function status(car) {
+  const now = Date.now();
+  if (!car.listed) return { cls: '', text: 'Unlisted' };
+  const w = futureWindows(car);
+  const busy = liveBookings(car.id).some((b) => b.start <= now && b.end > now);
+  if (w.some((x) => x.s <= now) && !busy) return { cls: 'ok', text: 'Free now', now: true };
+  if (w.length) return { cls: 'soon', text: 'From ' + fmt(Math.max(w[0].s, now)) };
+  return { cls: 'no', text: 'No times offered' };
+}
+function mergeWindow(list, s, e) {
+  const out = [];
+  for (const w of list) { if (w.s <= e && w.e >= s) { s = Math.min(s, w.s); e = Math.max(e, w.e); } else out.push(w); }
+  out.push({ s, e });
+  return out.filter((w) => w.e > Date.now() - DAY).sort((a, b) => a.s - b.s);
+}
+
+// ---------- people ----------
+async function refreshProfiles() {
+  const ids = new Set([...S.members.map((m) => m.id), ...S.cars.map((c) => c.ownerId), ...S.bookings.map((b) => b.renterId)]);
+  if (!S.user || !ids.size) return;
+  S.profiles = await S.user.profiles([...ids]);
+}
+function personName(id, car) {
+  if (id === S.uid) return 'You';
+  if (car && car.demoOwnerName) return car.demoOwnerName;
+  return (S.profiles[id] && S.profiles[id].name) || 'A neighbour';
+}
+const isMember = () => S.members.some((m) => m.id === S.uid);
+
+// ---------- boot ----------
+(async function start() {
+  const use = (n) => (window.claude && window.claude.use ? window.claude.use(n) : Promise.resolve(null));
+  const [db, user, assets] = await Promise.all([use('db'), use('user'), use('assets')]);
+  S.db = db; S.user = user; S.assets = assets;
+  if (!db) return gate('This page needs its shared board, which only works when you open it on claude.ai while signed in.');
+  if (user) { S.uid = await user.id(); S.isOwner = await user.isOwner(); }
+  if (!S.uid) return gate('Sign in to claude.ai to join the car share.');
+
+  db.doc('config/settings').onSnapshot((d) => { if (d.exists) S.settings = { ...S.settings, ...d.data() }; render(); }, dbErr);
+  db.collection('members').onSnapshot((q) => { S.members = q.docs.map((d) => ({ id: d.id, ...d.data() })); S.loaded.members = true; render(); }, dbErr);
+  db.collection('cars').onSnapshot((q) => { S.cars = q.docs.map((d) => ({ id: d.id, ...d.data() })); S.loaded.cars = true; render(); }, dbErr);
+  db.collection('bookings').onSnapshot((q) => { S.bookings = q.docs.map((d) => ({ id: d.id, ...d.data() })); S.loaded.bookings = true; render(); }, dbErr);
+})();
+
+function dbErr(e) { if (e.code !== 'revoked') toast('Lost connection to the board. Reload the page.'); }
+
+function gate(msg, joinable = false) {
+  $('#nav').hidden = true;
+  const full = S.members.length >= S.settings.maxMembers;
+  $('#main').innerHTML = `
+    <section class="gate">
+      <h2>Rent a car from your street</h2>
+      <p style="margin:0">Neighbours list their cars with an hourly and daily price and the times they can spare them. Everyone else books a slot, then picks up the keys.</p>
+      <p class="muted" style="margin:0">${esc(msg)}</p>
+      ${joinable ? `<p class="num small muted" style="margin:0">${S.members.length} / ${S.settings.maxMembers} member places used</p>
+        <button class="btn go" id="join" ${full ? 'disabled' : ''}>${full ? 'The group is full' : 'Join the car share'}</button>` : ''}
+    </section>`;
+  $('#join')?.addEventListener('click', join);
+}
+
+async function join() {
+  if (S.members.length >= S.settings.maxMembers) return toast('The group is full.');
+  try { await S.db.doc('members/' + S.uid).set({ joinedAt: Date.now() }); toast('Welcome to the car share.'); }
+  catch (e) { toast(e.code === 'invalid_argument' ? 'You have view-only access, so you can’t join. Ask the organiser for access.' : 'Couldn’t join. Try again.'); }
+}
+
+// ---------- render ----------
+let renderQueued = false;
+function render() {
+  if (renderQueued) return; renderQueued = true;
+  queueMicrotask(async () => {
+    renderQueued = false;
+    if (!(S.loaded.members && S.loaded.cars && S.loaded.bookings)) return;
+    await refreshProfiles();
+    renderWho();
+    if (!isMember()) return gate('Join to browse cars, book them and list your own. Up to ' + S.settings.maxMembers + ' neighbours can join.', true);
+    $('#nav').hidden = false;
+    $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === S.view)));
+    const main = $('#main');
+    if (S.view === 'browse') renderBrowse(main);
+    if (S.view === 'mine') renderMine(main);
+    if (S.view === 'trips') renderTrips(main);
+    if ($('#dlg').open && openCarId) paintCar(openCarId, true);
+  });
+}
+
+async function renderWho() {
+  const me = S.user ? await S.user.me() : null;
+  $('#who').innerHTML = me ? `<img src="${esc(me.avatarUrl)}" alt=""><span></span>` : '';
+  if (me) $('#who span').textContent = me.name || 'You';
+}
+
+$('#nav').addEventListener('click', (e) => { const t = e.target.closest('.tab'); if (t) { S.view = t.dataset.view; render(); } });
+
+// ----- browse -----
+function filtered() {
+  const f = S.filters, q = f.q.toLowerCase().trim();
+  const from = fromLocal(f.from), to = fromLocal(f.to), timed = from < to;
+  return S.cars
+    .filter((c) => c.listed || c.ownerId === S.uid)
+    .filter((c) => !q || `${c.make} ${c.model} ${c.color || ''} ${c.address || ''}`.toLowerCase().includes(q))
+    .filter((c) => !f.seats || c.seats >= Number(f.seats))
+    .filter((c) => !f.fuel || c.fuel === f.fuel)
+    .filter((c) => f.maxPrice === '' || c.pricePerHour <= Number(f.maxPrice))
+    .filter((c) => !timed || (c.ownerId !== S.uid && !whyNot(c, Math.max(from, Date.now()), to)))
+    .map((c) => ({ ...c, _quote: timed ? quote(c, from, to) : null }))
+    .sort((a, b) => (status(b).now ? 1 : 0) - (status(a).now ? 1 : 0) || a.pricePerHour - b.pricePerHour);
+}
+
+function renderBrowse(main) {
+  if (!$('#filters', main)) {
+    main.innerHTML = `
+      <section class="band">
+        <div class="band-in">
+          <div>
+            <p class="eyebrow">Parked near you</p>
+            <h2>Borrow a car from down the street.</h2>
+            <div class="stats" id="stats"></div>
+          </div>
+          <div id="feature"></div>
+        </div>
+      </section>
+      <form class="filters" id="filters" autocomplete="off">
+        <label class="f q">Search<input id="f-q" name="q" placeholder="Make, model, street…"></label>
+        <label class="f">Seats<select id="f-seats" name="seats"><option value="">Any</option><option value="2">2+</option><option value="4">4+</option><option value="5">5+</option><option value="7">7+</option></select></label>
+        <label class="f">Fuel<select id="f-fuel" name="fuel"><option value="">Any</option><option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option></select></label>
+        <label class="f">Max / hour<input id="f-max" name="maxPrice" type="number" min="0" step="0.5"></label>
+        <label class="f">Pick-up<input id="f-from" name="from" type="datetime-local"></label>
+        <label class="f">Return<input id="f-to" name="to" type="datetime-local"></label>
+        <button type="button" class="btn" id="f-clear">Clear</button>
+      </form>
+      <div class="row between" style="align-items:end;margin-top:10px">
+        <div><h2 id="count-title">Cars on your street</h2><span class="muted" id="count"></span></div>
+        <div class="seg" role="group" aria-label="View as">
+          <button type="button" id="m-list" data-mode="list">Cards</button>
+          <button type="button" id="m-plan" data-mode="plan">Map</button>
+        </div>
+      </div>
+      <div id="results"></div>`;
+    const form = $('#filters', main);
+    for (const [k, v] of Object.entries(S.filters)) form.elements[k].value = v;
+    form.addEventListener('input', () => { S.filters = Object.fromEntries(new FormData(form)); paintResults(); });
+    form.addEventListener('submit', (e) => e.preventDefault());
+    $('#f-clear').addEventListener('click', () => { form.reset(); S.filters = Object.fromEntries(new FormData(form)); paintResults(); });
+    $$('[data-mode]', main).forEach((b) => b.addEventListener('click', () => { S.mode = b.dataset.mode; paintResults(); }));
+  }
+  paintBand();
+  paintResults();
+}
+
+// Live numbers for the hero band, plus the cheapest car that's free right now.
+function paintBand() {
+  const all = S.cars.filter((c) => c.listed && c.ownerId !== S.uid);
+  const free = all.filter((c) => status(c).now);
+  const cheapest = all.length ? Math.min(...all.map((c) => c.pricePerHour)) : null;
+  const owners = new Set(all.map((c) => c.ownerId)).size;
+  $('#stats').innerHTML = `
+    <div><b>${all.length}</b><span>cars to rent</span></div>
+    <div><b>${free.length}</b><span>free right now</span></div>
+    <div><b>${cheapest === null ? '–' : money(cheapest)}</b><span>per hour, from</span></div>
+    <div><b>${owners}</b><span>neighbours sharing</span></div>`;
+  const pick = free.filter((c) => c.imageUrl).sort((a, b) => a.pricePerHour - b.pricePerHour)[0] || all.find((c) => c.imageUrl);
+  const box = $('#feature');
+  if (!pick) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <button class="feature" data-car="${esc(pick.id)}" aria-label="${esc(pick.make + ' ' + pick.model)}">
+      <img src="${esc(pick.imageUrl)}" alt="">
+      <span class="tag"><span><small>${status(pick).now ? 'Free right now' : 'Coming up'}</small><strong>${esc(pick.make)} ${esc(pick.model)}</strong></span><b>${money(pick.pricePerHour)}<span> / hour</span></b></span>
+    </button>`;
+  box.firstElementChild.addEventListener('click', () => openCar(pick.id));
+}
+
+function paintResults() {
+  const cars = filtered(), box = $('#results');
+  if (!box) return;
+  $$('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  const timed = fromLocal(S.filters.from) < fromLocal(S.filters.to);
+  $('#count-title').textContent = timed ? 'Free for your trip' : 'Cars on your street';
+  $('#count').textContent = `${cars.length} car${cars.length === 1 ? '' : 's'}${timed ? ' available for the whole time, with the trip price' : ', with the ones free right now first'}`;
+  if (!cars.length) {
+    box.innerHTML = `<div class="empty">${S.cars.length ? 'No cars match those filters.' : 'No cars listed yet. Add yours under “My cars”.'}</div>`;
+    return;
+  }
+  box.innerHTML = S.mode === 'list' ? `<div class="grid">${cars.map(cardHtml).join('')}</div>` : planHtml(cars);
+  $$('[data-car]', box).forEach((el) => {
+    el.addEventListener('click', () => openCar(el.dataset.car));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCar(el.dataset.car); } });
+  });
+}
+
+const specs = (c) => [c.year, c.seats + ' seats', c.fuel, c.transmission, c.color].filter(Boolean).map(esc).join(' · ');
+function photoHtml(c, pill) {
+  const img = c.imageUrl
+    ? `<img src="${esc(c.imageUrl)}" alt="${esc(c.make + ' ' + c.model)}" loading="lazy">`
+    : '<span class="none">No photo</span>';
+  return `<div class="photo">${img}${pill || ''}</div>`;
+}
+
+function cardHtml(c) {
+  const st = status(c);
+  return `
+    <button class="car" data-car="${esc(c.id)}">
+      ${photoHtml(c, `<span class="pill ${st.cls}">${esc(st.text)}</span><span class="tagp">${money(c.pricePerHour)}<span> /hr</span></span>`)}
+      <div class="car-head"><h3>${esc(c.make)} ${esc(c.model)}</h3>${c.demo ? '<span class="pill demo">example</span>' : ''}</div>
+      <div class="specs">${specs(c)}</div>
+      <div class="muted small">${money(c.pricePerDay)} per day${c.address ? ' · ' + esc(shortAddr(c.address)) : ''}</div>
+      ${c._quote ? `<div style="color:var(--ok);font-weight:700">${money(c._quote.total)} for your trip</div>` : ''}
+      <div class="car-foot"><span class="muted">${esc(personName(c.ownerId, c))}</span><span class="goto">View &amp; book →</span></div>
+    </button>`;
+}
+const shortAddr = (a) => (a.length > 22 ? a.slice(0, 21) + '…' : a);
+
+// ----- plan: cars placed to scale around their centre -----
+function projection(points) {
+  const lat0 = points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const lng0 = points.reduce((s, p) => s + p.lng, 0) / points.length;
+  const kx = Math.cos((lat0 * Math.PI) / 180) * 111320, ky = 110540;
+  const xy = (p) => ({ x: (p.lng - lng0) * kx, y: -(p.lat - lat0) * ky });
+  const r = Math.max(300, ...points.map((p) => { const q = xy(p); return Math.max(Math.abs(q.x), Math.abs(q.y)); })) * 1.3;
+  return { lat0, lng0, kx, ky, r, xy, inv: (x, y) => ({ lat: lat0 - y / ky, lng: lng0 + x / kx }) };
+}
+function niceStep(r) { for (const s of [50, 100, 200, 250, 500, 1000, 2000, 5000]) if (r / s <= 4) return s; return 10000; }
+
+function planSvg(points, pr, W, Hh, inner) {
+  const sc = Math.min(W, Hh) / 2 / pr.r, cx = W / 2, cy = Hh / 2, step = niceStep(pr.r);
+  let grid = '';
+  for (let m = -Math.ceil(pr.r * 2 / step) * step; m <= pr.r * 2; m += step) {
+    grid += `<line x1="${cx + m * sc}" y1="0" x2="${cx + m * sc}" y2="${Hh}" stroke="var(--plan-grid)" stroke-width="1"/>`;
+    grid += `<line x1="0" y1="${cy + m * sc}" x2="${W}" y2="${cy + m * sc}" stroke="var(--plan-grid)" stroke-width="1"/>`;
+  }
+  const bar = step * sc;
+  return { sc, cx, cy, svg: `
+    <rect x="0" y="0" width="${W}" height="${Hh}" fill="var(--surface)"/>
+    ${grid}
+    <g transform="translate(16 ${Hh - 20})"><line x1="0" y1="0" x2="${bar}" y2="0" stroke="var(--ink)" stroke-width="3"/><line x1="0" y1="-5" x2="0" y2="5" stroke="var(--ink)" stroke-width="2"/><line x1="${bar}" y1="-5" x2="${bar}" y2="5" stroke="var(--ink)" stroke-width="2"/><text x="${bar + 8}" y="4">${step >= 1000 ? step / 1000 + ' km' : step + ' m'}</text></g>
+    <g transform="translate(${W - 28} 30)"><path d="M0 -14 L7 6 L0 2 L-7 6 Z" fill="var(--ink)"/><text x="-4" y="22">N</text></g>
+    ${inner || ''}` };
+}
+
+function planHtml(cars) {
+  const W = 900, Hh = 560, pr = projection(cars);
+  const { sc, cx, cy, svg } = planSvg(cars, pr, W, Hh);
+  const pins = cars.map((c) => {
+    const p = pr.xy(c), x = cx + p.x * sc, y = cy + p.y * sc, label = money(c.pricePerHour) + '/h', w = label.length * 8 + 14;
+    return `<g class="pin ${status(c).now ? '' : 'off'}" data-car="${esc(c.id)}" tabindex="0" role="button" aria-label="${esc(c.make + ' ' + c.model + ', ' + label)}" transform="translate(${x} ${y})">
+      <line x1="0" y1="0" x2="0" y2="-10" stroke="var(--ink)" stroke-width="2"/><circle r="3.5" fill="var(--ink)"/>
+      <rect x="${-w / 2}" y="-34" width="${w}" height="24" rx="4"/><text x="0" y="-18" text-anchor="middle">${esc(label)}</text>
+      <title>${esc(c.make + ' ' + c.model)}</title></g>`;
+  }).join('');
+  return `<div class="plan-box"><svg class="plan" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Plan of where the cars are parked">${svg}${pins}</svg></div>
+    <p class="small muted" style="margin:0">Blue pins are free now; grey pins are busy or not offered right now. Positions are drawn to scale from each car’s coordinates. Open a car to see it on OpenStreetMap.</p>`;
+}
+
+// ----- car detail -----
+let openCarId = null;
+function openCar(id) { openCarId = id; paintCar(id, false); const d = $('#dlg'); if (!d.open) d.showModal(); }
+$('#dlg').addEventListener('close', () => { openCarId = null; });
+$('#dlg').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) $('#dlg').close(); });
+
+function timelineHtml(windows, bookings) {
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  let rows = '';
+  for (let i = 0; i < 7; i++) {
+    const a0 = new Date(d0); a0.setDate(a0.getDate() + i); const a = a0.getTime();
+    const b1 = new Date(a0); b1.setDate(b1.getDate() + 1); const b = b1.getTime();
+    const seg = (list, cls) => list.map((x) => { const s = Math.max(x.s, a), e = Math.min(x.e, b); return e > s ? `<i class="${cls}" style="left:${(s - a) / (b - a) * 100}%;width:${(e - s) / (b - a) * 100}%"></i>` : ''; }).join('');
+    rows += `<div class="tl-row"><span>${a0.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span><div class="tl-bar">${seg(windows, 'a')}${seg(bookings.map((k) => ({ s: k.start, e: k.end })), 'b')}</div></div>`;
+  }
+  return `<div class="tl">${rows}<div class="tl-axis"><div></div><div><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div></div></div>
+    <div class="legend"><span><i style="background:var(--avail)"></i>Offered by owner</span><span><i style="background:var(--booked)"></i>Booked</span><span><i style="background:var(--sunken);border:1px solid var(--line)"></i>Not offered</span></div>`;
+}
+
+function paintCar(id, refresh) {
+  const car = S.cars.find((c) => c.id === id), body = $('#dlg-body');
+  if (!car) { $('#dlg').close(); return; }
+  const mine = car.ownerId === S.uid, st = status(car);
+  const books = liveBookings(car.id).filter((b) => b.end > Date.now()).sort((a, b) => a.start - b.start);
+  const wins = futureWindows(car);
+  // Keep what the renter typed when live data refreshes the dialog.
+  const prev = refresh && $('#bk-form') ? Object.fromEntries(new FormData($('#bk-form'))) : null;
+  let s0 = nextHour(); if (wins[0] && wins[0].s > s0) s0 = wins[0].s;
+  const osm = `https://www.openstreetmap.org/?mlat=${car.lat}&mlon=${car.lng}#map=18/${car.lat}/${car.lng}`;
+
+  body.innerHTML = `
+    <figure class="hero">
+      ${photoHtml(car)}
+      ${car.imageCredit ? `<figcaption>Photo: ${esc(car.imageCredit)}</figcaption>` : ''}
+      <button class="x on-photo" data-close aria-label="Close">×</button>
+      <div class="hero-title">
+        <div><span class="pill ${st.cls}">${esc(st.text)}</span><h2>${esc(car.make)} ${esc(car.model)}</h2></div>
+        <span>${mine ? 'Your car' : 'Owner: ' + esc(personName(car.ownerId, car))}</span>
+      </div>
+    </figure>
+    <div class="two">
+      <div class="stack">
+        <div class="specs">${specs(car)}</div>
+        <div class="tariff"><div><b>${money(car.pricePerHour)}</b> <span>per hour</span></div><div><b>${money(car.pricePerDay)}</b> <span>per day, for 24 hours</span></div></div>
+        ${car.description ? `<p style="margin:0">${esc(car.description)}</p>` : ''}
+      </div>
+      <div class="box stack">
+        <span class="label">Pick-up spot</span>
+        <span>${esc(car.address || 'No address given')}</span>
+        <span class="num small muted">${Number(car.lat).toFixed(5)}, ${Number(car.lng).toFixed(5)}</span>
+        <a href="${esc(osm)}" target="_blank" rel="noopener">Open in OpenStreetMap ↗</a>
+      </div>
+    </div>
+    <div class="stack"><span class="label">Next 7 days</span>${timelineHtml(wins, books)}</div>
+    <div class="two">
+      <div class="stack"><span class="label">Times offered</span>${wins.length ? `<ul class="slots">${wins.map((w) => `<li>${esc(fmtRange(w.s, w.e))}</li>`).join('')}</ul>` : '<span class="muted small">None yet.</span>'}</div>
+      <div class="stack"><span class="label">Booked</span>${books.length ? `<ul class="slots">${books.map((b) => `<li><span>${esc(fmtRange(b.start, b.end))}</span><span class="muted small">${b.renterId === S.uid ? 'You' : mine ? esc(personName(b.renterId)) : 'Booked'}</span></li>`).join('')}</ul>` : '<span class="muted small">No upcoming bookings.</span>'}</div>
+    </div>
+    ${mine ? `<div class="box row between"><span>This is your car.</span><button class="btn go" id="to-mine">Change price or times</button></div>`
+      : `<form class="box book stack" id="bk-form">
+          <strong>Book this car</strong>
+          <div class="inline">
+            <label class="f">Pick-up<input id="bk-start" name="start" type="datetime-local" required value="${prev ? esc(prev.start) : toLocal(s0)}"></label>
+            <label class="f">Return<input id="bk-end" name="end" type="datetime-local" required value="${prev ? esc(prev.end) : toLocal(s0 + 2 * H)}"></label>
+          </div>
+          <label class="f">Note for the owner (optional)<input id="bk-note" name="note" maxlength="300" value="${prev ? esc(prev.note) : ''}" placeholder="e.g. Back by 6, need the roof box"></label>
+          <div class="row between"><span id="bk-quote" class="num"></span><button class="btn go" id="bk-go" type="submit">Confirm booking</button></div>
+          <p class="err" id="bk-err" role="alert"></p>
+          <p class="small muted" style="margin:0">Payment and key hand-over are arranged directly with the owner.</p>
+        </form>`}`;
+
+  if (mine) { $('#to-mine').addEventListener('click', () => { $('#dlg').close(); S.view = 'mine'; render(); }); return; }
+  const form = $('#bk-form');
+  const upd = () => {
+    const f = Object.fromEntries(new FormData(form)), s = fromLocal(f.start), e = fromLocal(f.end);
+    const why = Number.isNaN(s) || Number.isNaN(e) ? 'Choose both times.' : whyNot(car, s, e);
+    if (e > s) { const q = quote(car, s, e); $('#bk-quote').textContent = `Total ${money(q.total)} · ${q.days ? q.days + 'd ' : ''}${q.rem ? q.rem + 'h' : ''}`; } else $('#bk-quote').textContent = '';
+    $('#bk-err').textContent = why || ''; $('#bk-go').disabled = !!why;
+  };
+  form.addEventListener('input', upd); upd();
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = Object.fromEntries(new FormData(form));
+    await book(car, fromLocal(f.start), fromLocal(f.end), f.note.trim());
+  });
+}
+
+async function book(car, s, e, note) {
+  const btn = $('#bk-go'); btn.disabled = true;
+  try {
+    // Hold a short lease on the car so two neighbours can't grab the same slot at once.
+    const lock = await S.db.doc('locks/' + car.id).acquire({ holder: S.uid, ttlMs: 8000 });
+    if (!lock.acquired) throw new Error('Someone else is booking this car right now. Try again in a few seconds.');
+    const fresh = await S.db.collection('bookings').where('carId', '==', car.id).where('status', '==', 'confirmed').get();
+    const why = whyNot(car, s, e, fresh.docs.map((d) => d.data()));
+    if (why) throw new Error(why);
+    await S.db.collection('bookings').add({ carId: car.id, ownerId: car.ownerId, renterId: S.uid, start: s, end: e, total: quote(car, s, e).total, note: note || null, status: 'confirmed', createdAt: Date.now() });
+    $('#dlg').close(); toast('Booked. Arrange the keys and payment with the owner.');
+  } catch (err) {
+    $('#bk-err').textContent = err.message || 'Couldn’t save the booking. Try again.'; btn.disabled = false;
+  }
+}
+
+// ----- my cars -----
+function renderMine(main) {
+  const cars = S.cars.filter((c) => c.ownerId === S.uid);
+  main.innerHTML = `
+    <div class="row between"><h2>My cars</h2><button class="btn go" id="add">Add a car</button></div>
+    ${cars.length ? cars.map(mineHtml).join('') : '<div class="empty">You haven’t listed a car. Add one, then offer the times you can spare it.</div>'}`;
+  $('#add').addEventListener('click', () => carForm(null));
+  for (const car of cars) bindMine(car);
+}
+
+function mineHtml(c) {
+  const up = liveBookings(c.id).filter((b) => b.end > Date.now()).length, s = nextHour(), wins = futureWindows(c);
+  return `
+    <section class="panel" id="p-${esc(c.id)}">
+      <div class="row between">
+        <div class="row" style="gap:12px"><div class="thumb">${photoHtml(c)}</div><div><h3>${esc(c.make)} ${esc(c.model)}</h3><div class="specs">${specs(c)}</div></div></div>
+        <div class="row"><span class="pill ${status(c).cls}">${esc(status(c).text)}</span><button class="btn sm" data-edit>Edit details</button></div>
+      </div>
+      <form class="inline" data-price>
+        <label class="f">Price / hour<input id="ph-${esc(c.id)}" name="pricePerHour" type="number" min="0" step="0.5" required value="${c.pricePerHour}"></label>
+        <label class="f">Price / day<input id="pd-${esc(c.id)}" name="pricePerDay" type="number" min="0" step="0.5" required value="${c.pricePerDay}"></label>
+        <label class="chk"><input id="ls-${esc(c.id)}" name="listed" type="checkbox" ${c.listed ? 'checked' : ''}> Listed</label>
+        <button class="btn go sm" type="submit">Save</button>
+      </form>
+      <div class="stack">
+        <span class="label">Times you’re offering it</span>
+        ${wins.length ? `<ul class="slots">${wins.map((w, i) => `<li><span>${esc(fmtRange(w.s, w.e))}</span><button class="btn sm warn" data-rm="${i}">Remove</button></li>`).join('')}</ul>` : '<span class="small muted">No times yet, so nobody can book it.</span>'}
+        <form class="inline" data-win>
+          <label class="f">From<input id="ws-${esc(c.id)}" name="s" type="datetime-local" required value="${toLocal(s)}"></label>
+          <label class="f">Until<input id="we-${esc(c.id)}" name="e" type="datetime-local" required value="${toLocal(s + 8 * H)}"></label>
+          <button class="btn sm" type="submit">Offer these times</button>
+          <button class="btn sm" type="button" data-week>Offer 08:00–20:00 daily for a week</button>
+        </form>
+      </div>
+      <span class="small muted">${up ? `${up} upcoming booking${up > 1 ? 's' : ''}. See Bookings.` : 'No upcoming bookings.'}</span>
+    </section>`;
+}
+
+async function saveCar(car, patch, msg) {
+  try { await S.db.doc('cars/' + car.id).update(patch); if (msg) toast(msg); }
+  catch (e) { toast(e.code === 'invalid_argument' ? 'You have view-only access and can’t change cars.' : 'Couldn’t save. Try again.'); }
+}
+
+function bindMine(car) {
+  const p = $('#p-' + CSS.escape(car.id));
+  $('[data-edit]', p).addEventListener('click', () => carForm(car));
+  $('[data-price]', p).addEventListener('submit', (e) => {
+    e.preventDefault(); const f = e.target;
+    const ph = Number(f.pricePerHour.value), pd = Number(f.pricePerDay.value);
+    if (!(ph >= 0 && pd >= 0)) return toast('Prices must be zero or more.');
+    saveCar(car, { pricePerHour: ph, pricePerDay: pd, listed: f.listed.checked }, 'Price and listing saved.');
+  });
+  $('[data-win]', p).addEventListener('submit', (e) => {
+    e.preventDefault(); const s = fromLocal(e.target.s.value), en = fromLocal(e.target.e.value);
+    if (!(en > s)) return toast('“Until” must be after “From”.');
+    if (en <= Date.now()) return toast('Those times are already over.');
+    saveCar(car, { windows: mergeWindow(car.windows || [], s, en) }, 'Times added.');
+  });
+  $('[data-week]', p).addEventListener('click', () => {
+    let w = car.windows || [];
+    for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() + i); d.setHours(8, 0, 0, 0); const e = new Date(d); e.setHours(20); if (e > Date.now()) w = mergeWindow(w, Math.max(d.getTime(), Date.now()), e.getTime()); }
+    saveCar(car, { windows: w }, 'Offered 08:00–20:00 for the next 7 days.');
+  });
+  const wins = futureWindows(car);
+  $$('[data-rm]', p).forEach((b) => b.addEventListener('click', () => {
+    const w = wins[Number(b.dataset.rm)];
+    if (liveBookings(car.id).some((k) => k.end > Date.now() && k.start < w.e && k.end > w.s)) return toast('A booking falls inside these times. Cancel it first under Bookings.');
+    if (!armed(b, 'Remove?')) return;
+    saveCar(car, { windows: (car.windows || []).filter((x) => !(x.s === w.s && x.e === w.e)) }, 'Times removed.');
+  }));
+}
+
+// ----- add / edit car -----
+function carForm(car) {
+  openCarId = null;
+  const c = car || { make: '', model: '', year: '', seats: 5, fuel: 'Petrol', transmission: 'Automatic', color: '', pricePerHour: '', pricePerDay: '', address: '', description: '', listed: true };
+  const others = S.cars.filter((x) => !car || x.id !== car.id);
+  const sel = (n, opts, v) => `<select id="cf-${n}" name="${n}">${opts.map((o) => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  $('#dlg-body').innerHTML = `
+    <div class="row between"><h2>${car ? 'Edit ' + esc(car.make + ' ' + car.model) : 'Add a car'}</h2><button class="x" data-close aria-label="Close">×</button></div>
+    <form id="cf" class="stack">
+      <div class="form-grid">
+        <label class="f">Make<input id="cf-make" name="make" required maxlength="50" value="${esc(c.make)}" placeholder="Toyota"></label>
+        <label class="f">Model<input id="cf-model" name="model" required maxlength="50" value="${esc(c.model)}" placeholder="Yaris"></label>
+        <label class="f">Year<input id="cf-year" name="year" type="number" min="1950" max="2100" value="${esc(c.year)}"></label>
+        <label class="f">Seats<input id="cf-seats" name="seats" type="number" min="1" max="12" required value="${esc(c.seats)}"></label>
+        <label class="f">Fuel${sel('fuel', ['Petrol', 'Diesel', 'Hybrid', 'Electric'], c.fuel)}</label>
+        <label class="f">Gearbox${sel('transmission', ['Automatic', 'Manual'], c.transmission)}</label>
+        <label class="f">Colour<input id="cf-color" name="color" maxlength="30" value="${esc(c.color)}"></label>
+        <label class="f">Price / hour<input id="cf-ph" name="pricePerHour" type="number" min="0" step="0.5" required value="${esc(c.pricePerHour)}"></label>
+        <label class="f">Price / day<input id="cf-pd" name="pricePerDay" type="number" min="0" step="0.5" required value="${esc(c.pricePerDay)}"></label>
+      </div>
+      <div class="photo-edit">
+        <div id="cf-photo"></div>
+        <div class="stack">
+          <span class="label">Photo</span>
+          ${S.assets
+            ? `<div class="row"><span class="btn filebtn">Upload a photo<input type="file" id="cf-file" accept="image/jpeg,image/png,image/webp"></span><button type="button" class="btn" id="cf-nophoto">Remove photo</button></div>
+               <span class="small muted">JPEG, PNG or WebP. A photo of the actual car helps neighbours spot it.</span>`
+            : '<span class="small muted">Only people who can edit this page can upload photos. Ask the organiser to add one for you.</span>'}
+        </div>
+      </div>
+      <label class="f">Notes for renters<textarea id="cf-desc" name="description" rows="2" maxlength="1000">${esc(c.description)}</textarea></label>
+      <label class="f">Pick-up spot<input id="cf-addr" name="address" maxlength="200" value="${esc(c.address)}" placeholder="Outside No. 12, Elm Road"></label>
+      <div class="stack">
+        <label class="f">Coordinates (paste “lat, lng” from any map app, or click the plan)
+          <input id="cf-ll" name="ll" required placeholder="51.50740, -0.12780" value="${car ? `${car.lat.toFixed(6)}, ${car.lng.toFixed(6)}` : ''}"></label>
+        ${others.length || car ? '<div class="plan-box" id="cf-plan"></div>' : ''}
+      </div>
+      <label class="chk"><input id="cf-listed" name="listed" type="checkbox" ${c.listed ? 'checked' : ''}> Listed for rent</label>
+      <p class="err" id="cf-err" role="alert"></p>
+      <div class="row between">
+        ${car ? '<button type="button" class="btn warn" id="cf-del">Delete car</button>' : '<span></span>'}
+        <div class="row"><button type="button" class="btn" data-close>Cancel</button><button class="btn go" type="submit">${car ? 'Save changes' : 'Add car'}</button></div>
+      </div>
+    </form>`;
+  const d = $('#dlg'); if (!d.open) d.showModal();
+  const form = $('#cf');
+  let photo = { imageId: c.imageId || null, imageUrl: c.imageUrl || null, imageCredit: c.imageCredit || null };
+  const drawPhoto = () => {
+    $('#cf-photo').innerHTML = photoHtml({ ...c, imageUrl: photo.imageUrl });
+    const rm = $('#cf-nophoto'); if (rm) rm.hidden = !photo.imageUrl;
+  };
+  drawPhoto();
+  $('#cf-nophoto')?.addEventListener('click', () => { photo = { imageId: null, imageUrl: null, imageCredit: null }; drawPhoto(); });
+  $('#cf-file')?.addEventListener('change', async (ev) => {
+    const file = ev.target.files[0]; ev.target.value = '';
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return ($('#cf-err').textContent = 'Choose a JPEG, PNG or WebP photo.');
+    $('#cf-err').textContent = ''; $('#cf-photo').innerHTML = '<div class="photo"><span class="none">Uploading…</span></div>';
+    try {
+      const up = await S.assets.upload(file);
+      photo = { imageId: up.id, imageUrl: up.url, imageCredit: null };
+    } catch (e) {
+      $('#cf-err').textContent = e && e.code === 'quota_exceeded' ? 'The photo store is full. Remove an old photo first.' : 'Couldn’t upload that photo. Try a smaller one.';
+    }
+    drawPhoto();
+  });
+  const parseLL = () => { const m = form.ll.value.match(/(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/); if (!m) return null; const lat = +m[1], lng = +m[2]; return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null; };
+  const drawPlan = () => {
+    const box = $('#cf-plan'); if (!box) return;
+    const here = parseLL(), pts = [...others, ...(here ? [here] : [])];
+    if (!pts.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const W = 700, Hh = 300, pr = projection(pts); const { sc, cx, cy, svg } = planSvg(pts, pr, W, Hh);
+    const dots = others.map((o) => { const p = pr.xy(o); return `<circle cx="${cx + p.x * sc}" cy="${cy + p.y * sc}" r="5" fill="var(--ink-2)"><title>${esc(o.make + ' ' + o.model)}</title></circle>`; }).join('');
+    const me = here ? (() => { const p = pr.xy(here); return `<g transform="translate(${cx + p.x * sc} ${cy + p.y * sc})"><circle r="9" fill="var(--sign)"/><circle r="3" fill="var(--sign-ink)"/></g>`; })() : '';
+    box.innerHTML = `<svg class="plan" id="cf-svg" viewBox="0 0 ${W} ${Hh}" style="cursor:crosshair" aria-label="Click to place your car relative to the other cars">${svg}${dots}${me}</svg>
+      <p class="small muted" style="margin:4px 0 0">Grey dots are the other cars. Click to place yours.</p>`;
+    $('#cf-svg').addEventListener('click', (ev) => {
+      const r = ev.currentTarget.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * Hh;
+      const ll = pr.inv((x - cx) / sc, (y - cy) / sc); form.ll.value = `${ll.lat.toFixed(6)}, ${ll.lng.toFixed(6)}`; drawPlan();
+    });
+  };
+  drawPlan();
+  form.ll.addEventListener('change', drawPlan);
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = Object.fromEntries(new FormData(form)), ll = parseLL();
+    if (!ll) return ($('#cf-err').textContent = 'Enter coordinates like “51.5074, -0.1278”, or click the plan.');
+    const ph = Number(f.pricePerHour), pd = Number(f.pricePerDay);
+    if (!(ph >= 0 && pd >= 0)) return ($('#cf-err').textContent = 'Prices must be zero or more.');
+    const data = { make: f.make.trim(), model: f.model.trim(), year: f.year ? Number(f.year) : null, seats: Number(f.seats) || 5, fuel: f.fuel, transmission: f.transmission, color: f.color.trim() || null, pricePerHour: ph, pricePerDay: pd, description: f.description.trim() || null, address: f.address.trim() || null, lat: ll.lat, lng: ll.lng, listed: form.listed.checked, ...photo };
+    try {
+      if (car) await S.db.doc('cars/' + car.id).update(data);
+      else await S.db.collection('cars').add({ ...data, ownerId: S.uid, windows: [], createdAt: Date.now() });
+      $('#dlg').close(); toast(car ? 'Changes saved.' : 'Car added. Now offer some times.'); S.view = 'mine'; render();
+    } catch (e) { $('#cf-err').textContent = e.code === 'invalid_argument' ? 'You have view-only access and can’t add cars.' : 'Couldn’t save. Try again.'; }
+  });
+  $('#cf-del')?.addEventListener('click', async (ev) => {
+    if (liveBookings(car.id).some((b) => b.end > Date.now())) return ($('#cf-err').textContent = 'This car has upcoming bookings. Cancel them first, or untick “Listed”.');
+    if (!armed(ev.currentTarget, 'Delete for good?')) return;
+    try { await S.db.doc('cars/' + car.id).delete(); $('#dlg').close(); toast('Car deleted.'); } catch { $('#cf-err').textContent = 'Couldn’t delete. Try again.'; }
+  });
+}
+
+// ----- bookings -----
+function renderTrips(main) {
+  const mineIds = new Set(S.cars.filter((c) => c.ownerId === S.uid).map((c) => c.id));
+  const byStart = (a, b) => b.start - a.start;
+  const asRenter = S.bookings.filter((b) => b.renterId === S.uid).sort(byStart);
+  const asOwner = S.bookings.filter((b) => mineIds.has(b.carId)).sort(byStart);
+  main.innerHTML = `
+    <h2>My trips</h2>
+    <div class="stack">${asRenter.length ? asRenter.map((b) => tripHtml(b, 'owner')).join('') : '<div class="empty">You haven’t booked a car yet.</div>'}</div>
+    <h2>Bookings of my cars</h2>
+    <div class="stack">${asOwner.length ? asOwner.map((b) => tripHtml(b, 'renter')).join('') : '<div class="empty">Nobody has booked your cars yet.</div>'}</div>
+    ${S.isOwner && S.cars.some((c) => c.demo) ? `<div class="box row between"><span class="small">You own this page. The example cars (marked “example”) came with it.</span><button class="btn sm warn" id="rm-demo">Remove example cars</button></div>` : ''}`;
+  $$('[data-cancel]', main).forEach((btn) => btn.addEventListener('click', async () => {
+    if (!armed(btn, 'Cancel booking?')) return;
+    try { await S.db.doc('bookings/' + btn.dataset.cancel).update({ status: 'cancelled', cancelledBy: S.uid }); toast('Booking cancelled.'); }
+    catch { toast('Couldn’t cancel. Try again.'); }
+  }));
+  $('#rm-demo')?.addEventListener('click', async (ev) => {
+    if (!armed(ev.currentTarget, 'Remove them?')) return;
+    const demo = S.cars.filter((c) => c.demo);
+    for (const c of demo) {
+      for (const b of S.bookings.filter((k) => k.carId === c.id)) await S.db.doc('bookings/' + b.id).delete().catch(() => {});
+      await S.db.doc('cars/' + c.id).delete().catch(() => {});
+    }
+    toast('Example cars removed.');
+  });
+}
+
+function tripHtml(b, other) {
+  const car = S.cars.find((c) => c.id === b.carId), now = Date.now();
+  const name = car ? `${car.make} ${car.model}` : 'A car that was removed';
+  const who = other === 'owner' ? (car ? personName(car.ownerId, car) : '') : personName(b.renterId);
+  const st = b.status === 'cancelled' ? ['no', 'Cancelled'] : b.end <= now ? ['', 'Done'] : b.start <= now ? ['ok', 'On the road'] : ['soon', 'Upcoming'];
+  const can = b.status === 'confirmed' && b.end > now;
+  return `
+    <article class="bk ${b.status === 'cancelled' ? 'dim' : ''}">
+      ${photoHtml(car || {})}
+      <div class="bk-main">
+        <div class="row"><h3>${esc(name)}</h3><span class="pill ${st[0]}">${st[1]}</span></div>
+        <span class="num" style="font-weight:600">${esc(fmtRange(b.start, b.end))}</span>
+        <span class="small muted">${other === 'owner' ? 'Owner' : 'Renter'}: ${esc(who)}${car && car.address ? ' · ' + esc(car.address) : ''}</span>
+        ${b.note ? `<span class="small muted">“${esc(b.note)}”</span>` : ''}
+      </div>
+      <div class="bk-stub"><b>${money(b.total)}</b>${can ? `<button class="btn sm warn" data-cancel="${esc(b.id)}">Cancel</button>` : ''}</div>
+    </article>`;
+}
+</script>

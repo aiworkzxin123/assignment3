@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kerbside Car Share</title>
+  <meta name="description" content="A neighbourhood car rental web app for up to 10 members: login, car listings with photos, availability, booking and a map.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+  <style>
+    :root {
+      --asphalt: #111a24; --asphalt-2: #1b2735; --on-asphalt: #eef2f6; --on-asphalt-2: #9fb0c2;
+      --amber: #ffb020; --amber-deep: #e89400; --amber-ink: #1d1402;
+      --bg: #f2f4f7; --surface: #fff; --surface-2: #eef1f5; --text: #121a23; --muted: #5b6978; --border: #e0e5eb;
+      --shadow: 0 1px 2px rgba(17,26,36,.05), 0 8px 24px rgba(17,26,36,.08);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --asphalt: #070c12; --asphalt-2: #111a24; --bg: #0c1219; --surface: #151e28; --surface-2: #1d2834; --text: #e7edf3; --muted: #93a2b2; --border: #253241; --amber: #ffbe3d; --amber-deep: #f0a51f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.6 "Archivo", "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; }
+    h1, h2, h3 { margin: 0; line-height: 1.08; text-wrap: balance; }
+    h1 { font-stretch: 125%; font-weight: 800; letter-spacing: -.02em; font-size: clamp(2.2rem, 5.6vw, 4rem); }
+    h2 { font-stretch: 118%; font-weight: 800; font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -.01em; }
+    h3 { font-stretch: 112%; font-weight: 750; font-size: 1.1rem; }
+    .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); margin: 0 0 .7rem; }
+    .muted { color: var(--muted); }
+
+    header { background: radial-gradient(110% 120% at 85% 0%, var(--asphalt-2), var(--asphalt) 65%); color: var(--on-asphalt); }
+    .nav { display: flex; justify-content: space-between; align-items: center; padding-block: 18px; gap: 1rem; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: .55rem; font-stretch: 125%; font-weight: 800; font-size: 1.2rem; text-decoration: none; }
+    .mark { width: 34px; height: 34px; border-radius: 10px; background: var(--amber); display: grid; place-items: center; }
+    .mark svg { width: 22px; height: 22px; stroke: var(--amber-ink); fill: none; stroke-width: 2; stroke-linecap: round; }
+    .nav a.gh { color: var(--on-asphalt-2); text-decoration: none; font-weight: 600; }
+    .nav a.gh:hover { color: var(--on-asphalt); }
+    .hero { display: grid; grid-template-columns: 1fr 1.15fr; gap: 2.5rem; align-items: center; padding-block: 2.5rem 4rem; }
+    .lede { color: var(--on-asphalt-2); font-size: 1.1rem; max-width: 34rem; margin: 1.1rem 0 1.6rem; }
+    .cta { display: flex; gap: .7rem; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .7rem 1.25rem; border-radius: 999px; font-weight: 700; text-decoration: none; border: 1.5px solid transparent; }
+    .btn.primary { background: var(--amber); color: var(--amber-ink); }
+    .btn.primary:hover { background: var(--amber-deep); }
+    .btn.ghost { border-color: #2a3949; color: var(--on-asphalt); }
+    .btn.ghost:hover { background: var(--asphalt-2); }
+    .shot-hero { border-radius: 16px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.45); border: 1px solid #2a3949; }
+    .road { height: 26px; background: var(--asphalt-2); position: relative; overflow: hidden; }
+    .road::after { content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: repeating-linear-gradient(90deg, var(--amber) 0 44px, transparent 44px 84px); }
+
+    section { padding-block: 3.5rem 0; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+    .section-head p { margin: .4rem 0 0; max-width: 40rem; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .feature { background: var(--surface); border-radius: 14px; padding: 1.2rem; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: .4rem; }
+    .feature p { margin: 0; color: var(--muted); font-size: .95rem; }
+    .feature .tag { font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--amber-deep); }
+
+    .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+    figure { margin: 0; background: var(--surface); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    figure img { width: 100%; aspect-ratio: 1366 / 900; object-fit: cover; object-position: top; border-bottom: 1px solid var(--border); }
+    figcaption { padding: .8rem 1rem; font-size: .92rem; }
+    figcaption strong { display: block; font-stretch: 112%; }
+    figcaption span { color: var(--muted); }
+    .phone { display: grid; grid-template-columns: 260px 1fr; gap: 1.6rem; align-items: center; margin-top: 1.2rem; background: var(--surface); border-radius: 14px; padding: 1.2rem; box-shadow: var(--shadow); }
+    .phone img { border-radius: 22px; border: 6px solid var(--asphalt); aspect-ratio: 390 / 844; object-fit: cover; object-position: top; }
+
+    .docs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+    .doc { display: flex; flex-direction: column; gap: .35rem; padding: 1.1rem 1.2rem; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); text-decoration: none; border: 1.5px solid transparent; transition: border-color .15s, transform .15s; }
+    .doc:hover { border-color: var(--amber-deep); transform: translateY(-2px); }
+    .doc span { color: var(--muted); font-size: .92rem; }
+    .doc b { font-size: .8rem; color: var(--amber-deep); }
+
+    .run { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+    .panel { background: var(--surface); border-radius: 14px; padding: 1.3rem; box-shadow: var(--shadow); }
+    .panel p { color: var(--muted); margin: .5rem 0 0; }
+    pre { margin: .9rem 0 0; background: var(--asphalt); color: var(--on-asphalt); border-radius: 10px; padding: 1rem; overflow-x: auto; font: 500 .88rem/1.6 ui-monospace, Consolas, monospace; }
+    pre .c { color: var(--on-asphalt-2); }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: .6rem; }
+    td { padding: .45rem 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+    td:first-child { color: var(--muted); width: 38%; padding-right: 1rem; }
+
+    footer { margin-top: 4rem; background: var(--asphalt); color: var(--on-asphalt-2); padding-block: 1.6rem; font-size: .88rem; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+    @media (max-width: 860px) {
+      .hero, .run, .phone { grid-template-columns: 1fr; }
+      .gallery { grid-template-columns: 1fr; }
+      .phone img { max-width: 240px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav class="nav">
+        <a class="brand" href="#"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2"/><path d="M3.4 10.5h6.4M14.2 10.5h6.4M12 14.2V21"/></svg></span>Kerbside</a>
+        <a class="gh" href="https://github.com/aiworkzxin123/assignment3">Source on GitHub ↗</a>
+      </nav>
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Assignment 3 · Neighbourhood car share</p>
+          <h1>The car you need is parked down the street.</h1>
+          <p class="lede">A small private web app where up to 10 neighbours rent each other’s cars. Browse cars with photos and prices, see when each one is free, book a slot, and find it on the map. Owners set their own prices and times.</p>
+          <div class="cta">
+            <a class="btn primary" href="#documents">Project documents</a>
+            <a class="btn ghost" href="#run">Run it yourself</a>
+          </div>
+        </div>
+        <div class="shot-hero"><img src="screenshots/browse.png" alt="Kerbside browse page with car cards, prices and availability badges"></div>
+      </div>
+    </div>
+    <div class="road" aria-hidden="true"></div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <div class="section-head">
+        <div>
+          <p class="eyebrow" style="color:var(--amber-deep)">What it does</p>
+          <h2>Everything a street needs to share cars</h2>
+        </div>
+      </div>
+      <div class="features">
+        <div class="feature"><span class="tag">Accounts</span><h3>Simple, private login</h3><p>Username and password, capped at 10 members, with an optional invite code. Passwords are hashed with scrypt.</p></div>
+        <div class="feature"><span class="tag">Browse</span><h3>Models, photos, prices</h3><p>Filter by seats, fuel, price or trip time. Each card shows the photo, hourly and daily price, and whether it’s free now.</p></div>
+        <div class="feature"><span class="tag">Availability</span><h3>7-day timeline</h3><p>See at a glance when each car is offered and when it’s booked. Double bookings are refused by the server.</p></div>
+        <div class="feature"><span class="tag">Map</span><h3>Where every car is parked</h3><p>OpenStreetMap with price pins. Free cars are highlighted; tap a pin to see the car and book it.</p></div>
+        <div class="feature"><span class="tag">Owners</span><h3>Your car, your terms</h3><p>Change the price any time, add or remove the times it’s free, upload a photo, or hide it for a while.</p></div>
+        <div class="feature"><span class="tag">Trips</span><h3>Bookings as rental tickets</h3><p>Upcoming, in-progress and past trips for renters and owners, with the price and a cancel button.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <p class="eyebrow" style="color:var(--amber-deep)">Screens</p>
+          <h2>A look around</h2>
+          <p class="muted">Screenshots of the local app with the demo data loaded. The car photos are example pictures of each model from Wikimedia Commons.</p>
+        </div>
+      </div>
+      <div class="gallery">
+        <figure><img src="screenshots/login.png" alt="Login page" loading="lazy"><figcaption><strong>Log in</strong><span>Account creation shows how many of the 10 member places are taken.</span></figcaption></figure>
+        <figure><img src="screenshots/car-detail.png" alt="Car detail and booking" loading="lazy"><figcaption><strong>Car details and booking</strong><span>Live price as you pick times, pick-up map, and the week’s availability.</span></figcaption></figure>
+        <figure><img src="screenshots/map.png" alt="Map view" loading="lazy"><figcaption><strong>Map</strong><span>Price pins on OpenStreetMap; grey pins aren’t free right now.</span></figcaption></figure>
+        <figure><img src="screenshots/garage.png" alt="My garage" loading="lazy"><figcaption><strong>My garage</strong><span>Owners edit prices, listing status and the times each car is offered.</span></figcaption></figure>
+        <figure><img src="screenshots/trips.png" alt="Trips" loading="lazy"><figcaption><strong>Trips</strong><span>Bookings you made and bookings of your cars.</span></figcaption></figure>
+        <figure><img src="screenshots/browse.png" alt="Browse" loading="lazy"><figcaption><strong>Find a car</strong><span>Live stats, a featured free car, and a booking-style search.</span></figcaption></figure>
+      </div>
+      <div class="phone">
+        <img src="screenshots/mobile.png" alt="The app at phone width" loading="lazy">
+        <div>
+          <h3>Works on phones</h3>
+          <p class="muted">Neighbours mostly check cars from their phones, so every screen stacks to a single column, the tabs move to their own row, and the booking form stays easy to reach. It also follows the phone’s dark mode.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="documents">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow" style="color:var(--amber-deep)">Project artifacts</p>
+          <h2>Documents</h2>
+          <p class="muted">The requirements, design, test plan and guides that go with the code.</p>
+        </div>
+      </div>
+      <div class="docs">
+        <a class="doc" href="REQUIREMENTS.html"><h3>Requirements</h3><span>Scope, user stories, pricing rule and acceptance criteria.</span><b>Read →</b></a>
+        <a class="doc" href="DESIGN.html"><h3>Design</h3><span>Architecture, database schema, REST API, security and configuration.</span><b>Read →</b></a>
+        <a class="doc" href="TEST_PLAN.html"><h3>Test plan</h3><span>22 automated tests mapped to requirements, plus a manual UI checklist.</span><b>Read →</b></a>
+        <a class="doc" href="USER_GUIDE.html"><h3>User &amp; setup guide</h3><span>Installing, sharing with neighbours, and using the app day to day.</span><b>Read →</b></a>
+        <a class="doc" href="IMAGE_CREDITS.html"><h3>Photo credits</h3><span>Licences for the demo car photos (CC BY-SA 4.0).</span><b>Read →</b></a>
+        <a class="doc" href="https://github.com/aiworkzxin123/assignment3/blob/main/hosted/index.html"><h3>Hosted version</h3><span>The same app as a single page for claude.ai, using its shared database and sign-in.</span><b>View source →</b></a>
+      </div>
+    </section>
+
+    <section id="run">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow" style="color:var(--amber-deep)">Run it</p>
+          <h2>Start the app on your computer</h2>
+          <p class="muted">This page is only the project site. The app itself needs a small Node.js server with a database, so it runs on your own computer or a Node host rather than on GitHub Pages.</p>
+        </div>
+      </div>
+      <div class="run">
+        <div class="panel">
+          <h3>Quick start</h3>
+          <pre><span class="c"># Node.js 22.13 or newer</span>
+git clone https://github.com/aiworkzxin123/assignment3.git
+cd assignment3
+npm install
+npm run seed -- --reset   <span class="c"># demo data (optional)</span>
+npm start                 <span class="c"># http://localhost:3080</span>
+npm test                  <span class="c"># 22 automated tests</span></pre>
+          <p>Demo logins: <strong>alice</strong>, <strong>bob</strong>, <strong>chen</strong> or <strong>dana</strong>, password <strong>password123</strong>.</p>
+        </div>
+        <div class="panel">
+          <h3>Built with</h3>
+          <table>
+            <tr><td>Server</td><td>Node.js + Express (the only dependency)</td></tr>
+            <tr><td>Database</td><td>SQLite via Node’s built-in <code>node:sqlite</code></td></tr>
+            <tr><td>Front end</td><td>Plain HTML, CSS and JavaScript, no build step</td></tr>
+            <tr><td>Map</td><td>Leaflet with OpenStreetMap tiles, no API key</td></tr>
+            <tr><td>Auth</td><td>scrypt password hashes, HttpOnly session cookies</td></tr>
+            <tr><td>Tests</td><td><code>node:test</code>: 22 API and pricing tests</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Kerbside Car Share · Assignment 3</span>
+      <span>Car photos: Wikimedia Commons contributors, CC BY-SA 4.0 · Map data © OpenStreetMap contributors</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,9 @@
+node_modules/
+# Runtime data: SQLite database (contains password hashes) and uploaded photos
+data/
+*.db
+*.db-wal
+*.db-shm
+npm-debug.log*
+.DS_Store
+Thumbs.db
