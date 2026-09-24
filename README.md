@@ -13,7 +13,8 @@ A small private web app for up to 10 neighbours to rent each other's cars. It ha
 npm install
 npm run seed -- --reset   # optional demo data (log in as alice / password123)
 npm start                 # http://localhost:3080
-npm test                  # 22 automated tests
+npm test                  # 37 automated tests
+npm run build:hosted      # after editing src/rules.js: copy it into hosted/index.html
 ```
 
 Requires Node.js ≥ 22.13 (uses the built-in `node:sqlite`). The only dependency is Express. The app needs this server, so it can't run on GitHub Pages; the Pages site is the project's documentation.
@@ -34,4 +35,7 @@ scripts/seed.js   demo data
 tests/            node:test suites
 hosted/           single-page claude.ai version
 docs/             project documents + GitHub Pages site
+```
+
+The pricing and booking rules live in one place, `src/rules.js`. The hosted page carries an inlined copy that CI checks against the source, so both versions apply the same rules. See [Design §8](docs/DESIGN.md#8-hosted-variant) for the few intentional differences.
 ```
