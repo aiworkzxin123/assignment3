@@ -20,4 +20,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
+      # hosted/index.html must carry the current src/rules.js (npm run build:hosted).
+      - run: npm run check:hosted
       - run: npm test

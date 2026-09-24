@@ -7,6 +7,7 @@ const express = require('express');
 const { transaction } = require('./db');
 const auth = require('./auth');
 const { quote } = require('./pricing');
+const rules = require('./rules');
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -129,19 +130,13 @@ function createApp(db, options = {}) {
       'SELECT id, start_at, end_at FROM availability WHERE car_id = ? AND end_at > ? ORDER BY start_at',
     ),
     window: db.prepare('SELECT * FROM availability WHERE id = ? AND car_id = ?'),
-    coveringWindow: db.prepare(
-      'SELECT id FROM availability WHERE car_id = ? AND start_at <= ? AND end_at >= ? LIMIT 1',
-    ),
-    touchingWindows: db.prepare('SELECT * FROM availability WHERE car_id = ? AND start_at <= ? AND end_at >= ?'),
+    allWindows: db.prepare('SELECT * FROM availability WHERE car_id = ?'),
     insertWindow: db.prepare('INSERT INTO availability (car_id, start_at, end_at) VALUES (?, ?, ?)'),
     deleteWindow: db.prepare('DELETE FROM availability WHERE id = ?'),
     carBookings: db.prepare(`
       SELECT b.id, b.start_at, b.end_at, b.renter_id, u.display_name AS renter_name
       FROM bookings b JOIN users u ON u.id = b.renter_id
       WHERE b.car_id = ? AND b.status = 'confirmed' AND b.end_at > ? ORDER BY b.start_at`),
-    overlapping: db.prepare(
-      `SELECT id FROM bookings WHERE car_id = ? AND status = 'confirmed' AND start_at < ? AND end_at > ? LIMIT 1`,
-    ),
     upcomingInWindow: db.prepare(
       `SELECT id FROM bookings WHERE car_id = ? AND status = 'confirmed' AND start_at < ? AND end_at > ? AND end_at > ? LIMIT 1`,
     ),
@@ -178,10 +173,15 @@ function createApp(db, options = {}) {
     return car;
   }
 
+  const interval = (row) => ({ start: row.start_at, end: row.end_at, row });
+
   // Is the car bookable for [start, end)? Returns null if yes, or a reason.
   function unavailableReason(carId, start, end) {
-    if (!q.coveringWindow.get(carId, start, end)) return 'The car is not available for the whole of that time.';
-    if (q.overlapping.get(carId, end, start)) return 'The car is already booked during that time.';
+    const windows = q.allWindows.all(carId).map(interval);
+    const bookings = q.carBookings.all(carId, start).map(interval);
+    const conflict = rules.bookingConflict(windows, bookings, start, end);
+    if (conflict === 'not-offered') return 'The car is not available for the whole of that time.';
+    if (conflict === 'already-booked') return 'The car is already booked during that time.';
     return null;
   }
 
@@ -191,8 +191,8 @@ function createApp(db, options = {}) {
     const bookings = q.carBookings.all(car.id, t);
     const availableNow =
       !!car.is_listed &&
-      windows.some((w) => w.start_at <= t && w.end_at > t) &&
-      !bookings.some((b) => b.start_at <= t && b.end_at > t);
+      windows.some((w) => rules.contains(interval(w), t)) &&
+      !bookings.some((b) => rules.contains(interval(b), t));
     const next = windows.find((w) => w.end_at > t);
     return {
       ...car,
@@ -353,16 +353,13 @@ function createApp(db, options = {}) {
 
   app.post('/api/cars/:id/availability', (req, res) => {
     const car = getOwnCar(req);
-    let { start, end } = range(req.body);
+    const { start, end } = range(req.body);
     if (end <= nowIso()) throw bad('Availability must end in the future.');
     // Merge with any window that overlaps or touches the new one.
     transaction(db, () => {
-      for (const w of q.touchingWindows.all(car.id, end, start)) {
-        if (w.start_at < start) start = w.start_at;
-        if (w.end_at > end) end = w.end_at;
-        q.deleteWindow.run(w.id);
-      }
-      q.insertWindow.run(car.id, start, end);
+      const { merged, absorbed } = rules.mergeWindow(q.allWindows.all(car.id).map(interval), start, end);
+      for (const w of absorbed) q.deleteWindow.run(w.row.id);
+      q.insertWindow.run(car.id, merged.start, merged.end);
     });
     res.status(201).json({ availability: q.windows.all(car.id, nowIso()) });
   });
@@ -387,7 +384,7 @@ function createApp(db, options = {}) {
     if (car.owner_id === req.user.id) throw bad('You cannot book your own car.');
     if (!car.is_listed) throw new HttpError(409, 'This car is not currently listed for rental.');
     // Allow a few minutes of slack so "start now" bookings are accepted.
-    if (start < new Date(now().getTime() - 10 * 6e4).toISOString()) throw bad('Start time is in the past.');
+    if (start < new Date(now().getTime() - rules.START_GRACE_MS).toISOString()) throw bad('Start time is in the past.');
 
     const booking = transaction(db, () => {
       const reason = unavailableReason(car.id, start, end);

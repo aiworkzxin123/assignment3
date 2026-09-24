@@ -282,37 +282,113 @@ function armed(btn, label = 'Tap again to confirm') {
   return false;
 }
 
-// ---------- pricing & availability (same rules as the local server) ----------
-function quote(car, s, e) {
-  const hours = Math.ceil((e - s) / H), days = Math.floor(hours / 24), rem = hours % 24;
-  const total = Math.round((days * car.pricePerDay + Math.min(rem * car.pricePerHour, car.pricePerDay)) * 100) / 100;
-  return { hours, days, rem, total };
+// ---------- pricing & availability ----------
+// The rules are the server's own src/rules.js, inlined by `npm run build:hosted`.
+// Don't edit between the markers: CI fails if this copy drifts from the source.
+const Rules = (function (module) {
+// BEGIN src/rules.js
+'use strict';
+
+// Pure pricing and booking rules, shared by the server (src/) and the hosted
+// single-page version. `npm run build:hosted` inlines this file verbatim into
+// hosted/index.html, so keep it dependency-free, with no I/O and no clock.
+//
+// Times can be epoch milliseconds or ISO strings (same format throughout):
+// anything that compares correctly with < and >. Intervals are { start, end },
+// half-open [start, end).
+
+const HOUR_MS = 36e5;
+
+// Bookings may start this far in the past, so "start now" is accepted.
+const START_GRACE_MS = 10 * 6e4;
+
+const toMs = (t) => (typeof t === 'number' ? t : Date.parse(t));
+
+// Price for a rental: whole days at the daily rate, leftover hours at the
+// hourly rate (partial hours round up), with leftover hours never costing
+// more than one extra day.
+function quote({ perHour, perDay }, start, end) {
+  const hours = Math.ceil((toMs(end) - toMs(start)) / HOUR_MS);
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  const remCost = Math.min(remHours * perHour, perDay);
+  const total = Math.round((days * perDay + remCost) * 100) / 100;
+  return { hours, days, remHours, total };
 }
+
+// Do [a.start, a.end) and [b.start, b.end) share any time?
+const overlaps = (a, b) => a.start < b.end && a.end > b.start;
+
+// Does the window cover the whole of [start, end)?
+const covers = (w, start, end) => w.start <= start && w.end >= end;
+
+// Is the instant t inside [i.start, i.end)?
+const contains = (i, t) => i.start <= t && i.end > t;
+
+// Add [start, end) to a list of availability windows, merging it with every
+// window it overlaps or touches. Returns the merged window, the windows it
+// absorbed and the untouched rest.
+function mergeWindow(windows, start, end) {
+  const absorbed = [];
+  const rest = [];
+  let s = start;
+  let e = end;
+  for (const w of windows) {
+    if (w.start <= end && w.end >= start) {
+      absorbed.push(w);
+      if (w.start < s) s = w.start;
+      if (w.end > e) e = w.end;
+    } else {
+      rest.push(w);
+    }
+  }
+  return { merged: { start: s, end: e }, absorbed, rest };
+}
+
+// Why can't [start, end) be booked, given the car's availability windows and
+// its confirmed bookings? Returns null when it can.
+function bookingConflict(windows, bookings, start, end) {
+  if (!windows.some((w) => covers(w, start, end))) return 'not-offered';
+  if (bookings.some((b) => overlaps(b, { start, end }))) return 'already-booked';
+  return null;
+}
+
+module.exports = { HOUR_MS, START_GRACE_MS, quote, overlaps, covers, contains, mergeWindow, bookingConflict };
+// END src/rules.js
+  return module.exports;
+})({});
+
+// Adapters for this page's data shapes: cars have camelCase prices, windows are
+// { s, e } and bookings are { start, end }, all in epoch ms.
+const win = (w) => ({ start: w.s, end: w.e });
+const quote = (car, s, e) => Rules.quote({ perHour: car.pricePerHour, perDay: car.pricePerDay }, s, e);
 const liveBookings = (carId) => S.bookings.filter((b) => b.carId === carId && b.status === 'confirmed');
 const futureWindows = (car) => (car.windows || []).filter((w) => w.e > Date.now()).sort((a, b) => a.s - b.s);
 function whyNot(car, s, e, bookings = liveBookings(car.id)) {
   if (!(e > s)) return 'Return time must be after pick-up time.';
-  if (s < Date.now() - 10 * 6e4) return 'Pick-up time is in the past.';
+  if (s < Date.now() - Rules.START_GRACE_MS) return 'Pick-up time is in the past.';
   if (!car.listed) return 'This car isn’t listed right now.';
   if (car.ownerId === S.uid) return 'This is your own car.';
-  if (!(car.windows || []).some((w) => w.s <= s && w.e >= e)) return 'The owner hasn’t offered the car for that whole time.';
-  if (bookings.some((b) => b.start < e && b.end > s)) return 'Someone has already booked part of that time.';
+  const conflict = Rules.bookingConflict((car.windows || []).map(win), bookings, s, e);
+  if (conflict === 'not-offered') return 'The owner hasn’t offered the car for that whole time.';
+  if (conflict === 'already-booked') return 'Someone has already booked part of that time.';
   return null;
 }
 function status(car) {
   const now = Date.now();
   if (!car.listed) return { cls: '', text: 'Unlisted' };
   const w = futureWindows(car);
-  const busy = liveBookings(car.id).some((b) => b.start <= now && b.end > now);
-  if (w.some((x) => x.s <= now) && !busy) return { cls: 'ok', text: 'Free now', now: true };
+  const busy = liveBookings(car.id).some((b) => Rules.contains(b, now));
+  if (w.some((x) => Rules.contains(win(x), now)) && !busy) return { cls: 'ok', text: 'Free now', now: true };
   if (w.length) return { cls: 'soon', text: 'From ' + fmt(Math.max(w[0].s, now)) };
   return { cls: 'no', text: 'No times offered' };
 }
 function mergeWindow(list, s, e) {
-  const out = [];
-  for (const w of list) { if (w.s <= e && w.e >= s) { s = Math.min(s, w.s); e = Math.max(e, w.e); } else out.push(w); }
-  out.push({ s, e });
-  return out.filter((w) => w.e > Date.now() - DAY).sort((a, b) => a.s - b.s);
+  const { merged, rest } = Rules.mergeWindow(list.map(win), s, e);
+  // Hosted-only housekeeping, not a booking rule: windows are stored inside the
+  // car document, so drop ones that ended over a day ago to keep it small. The
+  // server keeps old rows and filters them out when reading.
+  return [...rest, merged].map((w) => ({ s: w.start, e: w.end })).filter((w) => w.e > Date.now() - DAY).sort((a, b) => a.s - b.s);
 }
 
 // ---------- people ----------
@@ -628,7 +704,7 @@ function paintCar(id, refresh) {
   const upd = () => {
     const f = Object.fromEntries(new FormData(form)), s = fromLocal(f.start), e = fromLocal(f.end);
     const why = Number.isNaN(s) || Number.isNaN(e) ? 'Choose both times.' : whyNot(car, s, e);
-    if (e > s) { const q = quote(car, s, e); $('#bk-quote').textContent = `Total ${money(q.total)} · ${q.days ? q.days + 'd ' : ''}${q.rem ? q.rem + 'h' : ''}`; } else $('#bk-quote').textContent = '';
+    if (e > s) { const q = quote(car, s, e); $('#bk-quote').textContent = `Total ${money(q.total)} · ${q.days ? q.days + 'd ' : ''}${q.remHours ? q.remHours + 'h' : ''}`; } else $('#bk-quote').textContent = '';
     $('#bk-err').textContent = why || ''; $('#bk-go').disabled = !!why;
   };
   form.addEventListener('input', upd); upd();
@@ -721,7 +797,7 @@ function bindMine(car) {
   const wins = futureWindows(car);
   $$('[data-rm]', p).forEach((b) => b.addEventListener('click', () => {
     const w = wins[Number(b.dataset.rm)];
-    if (liveBookings(car.id).some((k) => k.end > Date.now() && k.start < w.e && k.end > w.s)) return toast('A booking falls inside these times. Cancel it first under Bookings.');
+    if (liveBookings(car.id).some((k) => k.end > Date.now() && Rules.overlaps(k, win(w)))) return toast('A booking falls inside these times. Cancel it first under Bookings.');
     if (!armed(b, 'Remove?')) return;
     saveCar(car, { windows: (car.windows || []).filter((x) => !(x.s === w.s && x.e === w.e)) }, 'Times removed.');
   }));

@@ -28,11 +28,13 @@ project3/
 │  ├─ app.js            createApp(db, options) — all routes & validation
 │  ├─ auth.js           password hashing, sessions, cookie helpers, middleware
 │  ├─ db.js             schema + openDb() + transaction()
-│  └─ pricing.js        quote(car, start, end)
+│  ├─ pricing.js        quote(car, start, end) for database rows
+│  └─ rules.js          pure pricing/booking rules, shared with hosted/
 ├─ public/              frontend (index.html, app.js, styles.css)
 │  └─ images/cars/      bundled demo photos (credits in docs/IMAGE_CREDITS.md)
 ├─ scripts/seed.js      demo data
-├─ tests/               node:test suites (API + pricing)
+├─ scripts/build-hosted.js  inlines src/rules.js into hosted/index.html
+├─ tests/               node:test suites (API, rules, hosted parity)
 ├─ hosted/              claude.ai hosted version (single HTML page)
 ├─ data/                SQLite database and uploads/ (created at runtime)
 └─ docs/                these documents
@@ -119,3 +121,7 @@ Single page with three tabs:
 
 ## 8. Hosted variant
 `hosted/index.html` is the same product as a single page published on claude.ai. It uses the platform's shared database and sign-in (claude.ai accounts) instead of the Express server. Photos live in the page's own file store, because the hosted page can't load images from other websites. Car documents keep `imageId` and `imageUrl` (`/_blob/<id>`). Uploading is available only to people who can edit the page. See the user guide for the differences.
+
+**Shared rules.** Pricing, availability cover, booking overlap and window merging live in `src/rules.js`, which has no dependencies and works on either epoch ms or ISO strings. The server uses it directly. `npm run build:hosted` copies it verbatim into `hosted/index.html` between the `// BEGIN src/rules.js` and `// END src/rules.js` markers, and the page wraps it in small adapters for its own field names (`pricePerHour`, windows as `{ s, e }`). CI runs `npm run check:hosted` and `tests/hosted.test.js`, so a stale copy or a broken adapter fails the build. After changing `src/rules.js`, run `npm run build:hosted` and republish the page.
+
+Intentional differences: the hosted page drops availability windows that ended more than a day ago when saving, because they are stored inside the car document (the server keeps old rows and filters on read). Error messages are also worded differently.

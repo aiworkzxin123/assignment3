@@ -3,11 +3,12 @@
 ## 1. Strategy
 | Level | Tool | What |
 |---|---|---|
-| Unit | `node:test` — `tests/pricing.test.js` | Price calculation rules |
+| Unit | `node:test` — `tests/pricing.test.js`, `tests/rules.test.js` | Price calculation and booking rules (`src/rules.js`) |
+| Hosted parity | `node:test` — `tests/hosted.test.js`; `npm run check:hosted` | `hosted/index.html` inlines the current `src/rules.js`, and its rules section passes the same pricing cases (`tests/fixtures/quote-cases.js`) |
 | API / integration | `node:test` — `tests/api.test.js` | Each test starts the real Express app on a random port with a fresh in-memory SQLite DB and calls it over HTTP with per-user cookie jars |
 | Manual UI | Browser checklist below | Layout, map, dialogs, phone width, dark mode |
 
-Run the automated tests with `npm test` (no network or database setup needed).
+Run the automated tests with `npm test` (no network or database setup needed). CI (`.github/workflows/ci.yml`) runs `npm run check:hosted` and `npm test` on every push to `main` and every pull request.
 
 ## 2. Automated test cases
 | ID | Test (file: test name) | Requirement |
@@ -15,7 +16,7 @@ Run the automated tests with `npm test` (no network or database setup needed).
 | T-01 | pricing: charges hourly for short rentals | §5 pricing |
 | T-02 | pricing: rounds partial hours up | §5 |
 | T-03 | pricing: hourly cost is capped at the daily rate | §5 |
-| T-04 | pricing: whole days use the daily rate plus leftover hours | §5 |
+| T-04 | pricing: one whole day uses the daily rate; whole days plus leftover hours; leftover hours capped at one extra day | §5 |
 | T-05 | api: register, me, logout, login (case-insensitive username, wrong password rejected) | US-01, US-03 |
 | T-06 | api: rejects weak passwords and duplicate usernames | US-01, NFR-3 |
 | T-07 | api: enforces the member limit | US-02 |
@@ -34,8 +35,13 @@ Run the automated tests with `npm test` (no network or database setup needed).
 | T-20 | api: owner uploads a photo and attaches it to a car; renters see it; missing files 404 | US-35, US-36 |
 | T-21 | api: rejects uploads that are not photos, and anonymous uploads | US-35, NFR-3 |
 | T-22 | api: photo must be an uploaded file, a bundled photo or a web link (no `/etc/passwd`, no `..`) | US-35, NFR-6 |
+| T-23 | rules: intervals are half-open (touching ones don't overlap); `covers()` and `contains()` edges; ms and ISO times | US-21 |
+| T-24 | rules: `mergeWindow()` absorbs overlapping and touching windows only | US-32 |
+| T-25 | rules: `bookingConflict()` checks the window first, then existing bookings | US-21 |
+| T-26 | hosted: `hosted/index.html` inlines the current `src/rules.js` | NFR (parity) |
+| T-27 | hosted: page's `quote()`, `whyNot()` and `mergeWindow()` match the server cases; old windows pruned (hosted-only) | §5, US-21, US-32 |
 
-**Latest result:** 22 / 22 passed (Node 24.21, Windows 11).
+**Latest result:** 37 / 37 passed (Node 24.21, Windows 11).
 
 ## 3. Manual UI checklist
 Run `npm run seed -- --reset`, then `npm start`, and open http://localhost:3080.
